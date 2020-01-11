@@ -1,7 +1,7 @@
-"""Python ORM over the SQL based FTrack syntax.
-Inspiration was taken from SQLALchemy but it was simplified.
-Querying and creating is supported, but extra functionality for
-creation can be added if the need arises.
+"""Python wrapper over the SQL based FTrack syntax.
+Inspiration for the syntax was taken from SQLALchemy.
+Querying and creating is supported, and extra functionality will be
+added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'and_', 'or_']
@@ -39,6 +39,30 @@ def parse_value(func):
     return wrapper
 
 
+def convert_arg_entity(func):
+    """Grab the arguments of a method and convert any entities to keys."""
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        args = list(args)
+        for i, arg in enumerate(args):
+            if isinstance(arg, ftrack_api.entity.base.Entity):
+                comparison = getattr(Query(None, None), get_key_from_entity(arg)).id
+                args[i] = comparison == arg['id']
+        return func(self, *args, **kwargs)
+    return wrapper
+
+
+def get_key_from_entity(entity):
+    """Get the likely key from a given entity.
+    In most cases this is just lowercase.
+    """
+    if isinstance(entity, ftrack_api.entity.base.Entity):
+        entity = entity.__class__.__name__
+    if entity == 'NoteLabel':
+        return 'category'
+    return entity.lower()
+
+
 class Criteria(object):
     """Handle parsing the arguments to construct the query critera."""
     def __init__(self, operator, brackets):
@@ -48,7 +72,9 @@ class Criteria(object):
     def __call__(self, *args, **kwargs):
         query = []
         if kwargs:
-            query.append(' {} '.format(self.operator).join('{} is "{}"'.format(k, v) for k, v in kwargs.items()))
+            query.append(' {} '.format(self.operator).join(
+                '{} is "{}"'.format(k, v) for k, v in kwargs.items()
+            ))
             if args:
                 query.append(self.operator)
         if args:
@@ -150,9 +176,11 @@ class Comparison(object):
             base = self.value
         return self.__class__('{} before {}'.format(base, value))
 
+    @convert_arg_entity
     def has(self, *args, **kwargs):
         return self.__class__('{} has ({})'.format(self.value, and_(*args, **kwargs)))
 
+    @convert_arg_entity
     def any(self, *args, **kwargs):
         return self.__class__('{} any ({})'.format(self.value, and_(*args, **kwargs)))
 
@@ -259,10 +287,25 @@ class Query(object):
     def where(self, *args, **kwargs):
         """Filter the result."""
         for arg in args:
+            # The query has not been performed, attempt to execute
+            # This shouldn't really be used, so don't catch any errors
+            if isinstance(arg, Query):
+                arg = arg.one()
+
             if isinstance(arg, dict):
-                kwargs.update(arg)
+                for key, value in arg.items():
+                    self._where.append(Comparison(key)==value)
+
+            # Attempt to convert entity to lowercase name with ID
+            # For example, "<Project>" will evaluate to "project.id is <Project['id']>"
+            elif isinstance(arg, ftrack_api.entity.base.Entity):
+                self._where.append('{} is {}'.format(get_key_from_entity(arg)+'.id', arg['id']))
+
+            # The object is likely a comparison object, so convert to str
+            # If an actual string is input, then assume it's valid syntax
             else:
                 self._where.append(str(arg))
+        
         for key, value in kwargs.items():
             self._where.append(Comparison(key)==value)
         return self

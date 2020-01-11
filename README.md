@@ -1,11 +1,27 @@
 # ftrack-query
-Easy query generation for the FTrack API. The official module is extremely well written, but the custom SQL was not very pythonic to use. This is a more object orientated approach to building queries, using inspiration from SQLAlchemy.
+Easy query generation for the FTrack API. The official module is extremely powerful and well designed, but the custom SQL is not very pythonic to use.
+This is an object orientated approach to building queries, using inspiration from the design of SQLAlchemy.
 
-To provide a more complete set of features, the ability to create was also added, as it is quite a similar syntax anyway.
+This class expands upon `ftrack_api.Session`.
+
+## Example Usage
+
+```python
+with FTrackQuery() as session:
+    task = session.Task.first()
+    note = session.Note.create(
+        content='My new note',
+        author=session.User.where(username='peter').one(),
+        category=session.NoteLabel.where(name='Internal').one(),
+    )
+    task['notes'].append(note)
+    
+    session.commit()
+```
 
 ## Equivalent examples from the [API reference](http://ftrack-python-api.rtd.ftrack.com/en/0.9.0/querying.html):
 
-Every entity in use should be defined like `Entity = session.Entity` (not doing so is fine, but it's recommended for longer queries). To save space below, that part has been omitted.
+If an entity type is used multiple times, it's recommended to use `<Entity> = session.<Entity>` after the session is initialised. To save space below, that part has been omitted.
 
 ```python
 # projects = session.query('Project')
@@ -28,7 +44,7 @@ Project.where(Project.name.like('%thrones'), status='active')
 Project.where(or_(Project.name.like('%thrones'), Project.full_name.like('%thrones')), status='active')
 
 # session.query('Task where project.id is "{0}"'.format(project['id']))
-Task.where(project=project)
+Task.where(project)
 
 # session.query('Task where project.id is "{0}" and status.type.name is "Done"'.format(project['id']))
 Task.where(Task.status.type.name=='Done', project=project)
