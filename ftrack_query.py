@@ -4,14 +4,12 @@ Querying and creating is supported, but extra functionality for
 creation can be added if the need arises.
 """
 
-__all__ = ['FTrack', 'and_', 'or_']
-__version__ = '1.0.0'
+__all__ = ['FTrackQuery', 'and_', 'or_']
 
 import logging
 import os
 import ftrack_api
 from functools import wraps
-from getpass import getuser
 
 
 logger = logging.getLogger('ftrack-wrapper')
@@ -174,16 +172,6 @@ class Query(object):
     def __len__(self):
         return len(self.all())
 
-    def copy(self):
-        cls = self.__class__(session=self._session, entity=self._entity)
-        cls._entity = self._entity
-        cls._where = list(self._where)
-        cls._populate = list(self._populate)
-        cls._sort = list(self._sort)
-        cls._offset = self._offset
-        cls._limit = self._limit
-        return cls
-
     def __getattr__(self, attr):
         """Get the main keys.
         Example: session.Entity.key
@@ -216,14 +204,39 @@ class Query(object):
     def __iter__(self):
         return self._session.query(str(self)).__iter__()
 
+    @classmethod
+    def new(cls, session, entity):
+        """Create a new Query object."""
+        if entity == 'Note':
+            return QueryNote(session)
+        if entity == 'User':
+            return QueryUser(session)
+        return Query(session, entity)
+
+    def copy(self):
+        cls = Query.new(session=self._session, entity=self._entity)
+        cls._entity = self._entity
+        cls._where = list(self._where)
+        cls._populate = list(self._populate)
+        cls._sort = list(self._sort)
+        cls._offset = self._offset
+        cls._limit = self._limit
+        return cls
+
     def get(self, value):
         """Get an entity from the ID."""
         logger.debug('Get ({}): {}'.format(self._entity, value))
-        return super(FTrack, self._session).get(self._entity, value)
+        return super(FTrackQuery, self._session).get(self._entity, value)
 
     def create(self, **kwargs):
         """Create a new entity."""
         return self._session.create(self._entity, kwargs)
+
+    def ensure(self, **kwargs):
+        """Ensure an entity.
+        Will create if it doesn't exist.
+        """
+        return self._session.ensure(self._entity, kwargs)
 
     def one(self):
         return self._session.query(str(self)).one()
@@ -261,9 +274,16 @@ class Query(object):
     select = populate
 
     @clone_instance
-    def sort(self, value, desc=False):
+    def sort(self, value, desc=None, asc=None):
+        if desc is not None and asc is not None:
+            raise ValueError('sorting cannot be both descending and ascending')
+        elif desc is None and asc is None:
+            desc = False
+        elif asc is not None:
+            desc = not asc
         self._sort.append((value, desc))
         return self
+    order = sort
 
     @clone_instance
     def offset(self, value):
@@ -276,9 +296,9 @@ class Query(object):
         return self
 
 
-class NoteQuery(Query):
-    def __init__(self, session, entity='Note'):
-        super(NoteQuery, self).__init__(session, entity)
+class QueryNote(Query):
+    def __init__(self, session):
+        super(QueryNote, self).__init__(session, 'Note')
 
     def create(self, **kwargs):
         """Handle special cases when creating notes.
@@ -311,34 +331,40 @@ class NoteQuery(Query):
         return note
 
 
-class FTrack(ftrack_api.Session):
+class QueryUser(Query):
+    def __init__(self, session):
+        super(QueryUser, self).__init__(session, 'User')
+
+    def ensure(self, **kwargs):
+        return self._session.ensure(self._entity, kwargs, identifying_keys=['username'])
+
+
+class FTrackQuery(ftrack_api.Session):
     exc = ftrack_api.exception
     symbol = ftrack_api.symbol
     Entity = ftrack_api.entity.base.Entity
 
-    def __init__(self, user=getuser(), debug=False, **kwargs):
+    def __init__(self, server_url=None, api_key=None, api_user=None, debug=False, **kwargs):
         self.debug = debug
         try:
-            super(FTrack, self).__init__(server_url=os.environ.get('FTRACK_SERVER'), api_key=os.environ.get('FTRACK_API_KEY'), api_user=user, **kwargs)
-        except ftrack_api.exception.ServerError:
+            super(FTrackQuery, self).__init__(server_url=server_url, api_key=api_key, api_user=api_user, **kwargs)
+        except (TypeError, ftrack_api.exception.ServerError):
             if not self.debug:
                 raise
         logger.debug('New session initialised.')
 
     def __getattr__(self, attr):
         """Get entity."""
-        if attr == 'Note':
-            return NoteQuery(self)
-        return Query(self, attr)
+        return Query.new(self, attr)
     
     def __exit__(self, *args):
         if not self.debug:
-            return super(FTrack, self).__exit__(*args)
+            return super(FTrackQuery, self).__exit__(*args)
 
     def get(self, id):
         logger.debug('Get (Context): '+id)
-        return super(FTrack, self).get('Context', id)
+        return super(FTrackQuery, self).get('Context', id)
 
     def query(self, query):
         logger.debug('Query: '+query)
-        return super(FTrack, self).query(query)
+        return super(FTrackQuery, self).query(query)
