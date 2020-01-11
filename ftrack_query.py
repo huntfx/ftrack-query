@@ -101,6 +101,9 @@ class Comparison(object):
         """
         return Comparison(self.value+'.'+attr)
 
+    def __repr__(self):
+        return 'Comparison({})>'.format(self.value.__repr__())
+
     def __str__(self):
         return self.value
 
@@ -231,6 +234,12 @@ class Query(object):
 
     def __iter__(self):
         return self._session.query(str(self)).__iter__()
+
+    @clone_instance
+    def __or__(self, entity):
+        """Combine two objects."""
+        self._where = [or_(and_(*self._where), and_(*entity._where))]
+        return self
 
     @classmethod
     def new(cls, session, entity):
