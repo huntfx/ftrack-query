@@ -11,9 +11,10 @@ import logging
 import os
 import ftrack_api
 from functools import wraps
+from string import ascii_lowercase, ascii_uppercase
 
 
-logger = logging.getLogger('ftrack-wrapper')
+logger = logging.getLogger('ftrack-query')
 
 
 def clone_instance(func):
@@ -41,31 +42,37 @@ def parse_value(func):
 
 
 def convert_arg_entity(func):
-    """Grab the arguments of a method and convert any entities to keys."""
+    """Convert any entity arguments to keys."""
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         args = list(args)
         for i, arg in enumerate(args):
             if isinstance(arg, ftrack_api.entity.base.Entity):
-                comparison = getattr(Query(None, None), get_key_from_entity(arg)).id
-                args[i] = comparison == arg['id']
+                comparison = getattr(Query(None, None), get_key_from_entity(arg))
+                args[i] = comparison.id == arg['id']
         return func(self, *args, **kwargs)
     return wrapper
 
 
+_UC_REMAP = {u: '_'+l for l, u in zip(ascii_lowercase, ascii_uppercase)}
 def get_key_from_entity(entity):
-    """Get the likely key from a given entity.
-    In most cases this is just lowercase.
+    """Guess the attribute that would be given to an entity.
+    This is done by converting UpperCase to lower_case.
+
+    Ideally this shouldn't ever be called, but in some cases it can
+    make sense. Instead of "Task.where(project=project)", we can assume
+    the attribute is "project", and write it as "Task.where(project)".
     """
     if isinstance(entity, ftrack_api.entity.base.Entity):
         entity = entity.__class__.__name__
     if entity == 'NoteLabel':
         return 'category'
-    return entity.lower()
+    
+    return ''.join(_UC_REMAP.get(c, c) for c in entity).lstrip('_')
 
 
 class Criteria(object):
-    """Handle parsing the arguments to construct the query critera."""
+    """Convert multiple arguments into a valid query."""
     def __init__(self, operator, brackets):
         self.operator = operator
         self.brackets = brackets
@@ -97,8 +104,8 @@ class Comparison(object):
         self.value = str(value)
 
     def __getattr__(self, attr):
-        """Get subkeys of the entity keys.
-        Example: session.Entity.key.<subkey>.<subkey>...
+        """Get sub-attributes of the entity attributes.
+        Example: session.Entity.attr.<subattr>.<subattr>...
         """
         return Comparison(self.value+'.'+attr)
 
@@ -113,10 +120,9 @@ class Comparison(object):
     
     def __call__(self, value):
         """Cast a relation to a concrete type.
-
-        Example:
-            # With the following query, parent is limited to "Project" only:
-            TypedContext.where(TypedContext.parent(Project).status=='hidden')
+        One example would be TypedContext.parent(Project), where it
+        will limit the TypedContext search to the direct children of
+        projects.
         """
         return self.__class__('{}[{}]'.format(self.value, value))
 
@@ -125,12 +131,14 @@ class Comparison(object):
         if base is None:
             base = self.value
         return self.__class__('{} is {}'.format(base, value))
+    is_ = __eq__
 
     @parse_value
     def __ne__(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} is_not {}'.format(base, value))
+    is_not = __ne__
 
     @parse_value
     def __gt__(self, value, base=None):
@@ -202,15 +210,19 @@ class Query(object):
         self._limit = None
 
     def __len__(self):
+        """Get the number of results.
+        This executes the query so should not be used lightly.
+        """
         return len(self.all())
 
     def __getattr__(self, attr):
-        """Get the main keys.
-        Example: session.Entity.key
+        """Get an entity attribute.
+        Example: session.Entity.<attr>
         """
         return Comparison(attr)
 
     def __str__(self):
+        """Evaluate the query data and convert to a string."""
         query = []
         if self._populate:
             query.append('select')
@@ -222,7 +234,8 @@ class Query(object):
             query.insert(-1, 'where')
         if self._sort:
             query.append('order by')
-            sort = ('{}{}'.format(value, ('', ' descending')[descending]) for value, descending in self._sort)
+            sort = ('{}{}'.format(value, ('', ' descending')[descending]) 
+                    for value, descending in self._sort)
             query.append(', '.join(sort))
         if self._offset:
             query += ['offset', str(self._offset)]
@@ -231,14 +244,19 @@ class Query(object):
         return ' '.join(filter(bool, query))
 
     def __call__(self, *args, **kwargs):
-        raise TypeError("'Query' object is not callable, perhaps you meant to use 'Query.where()'?")
+        """Custom error message if attempting to call.
+        This is due to it being quite a common mistake.
+        """
+        raise TypeError("'Query' object is not callable, "
+                        "perhaps you meant to use 'Query.where()'?")
 
     def __iter__(self):
+        """Iterate through results without executing the full query."""
         return self._session.query(str(self)).__iter__()
 
     @clone_instance
     def __or__(self, entity):
-        """Combine two objects."""
+        """Combine two queries together."""
         self._where = [or_(and_(*self._where), and_(*entity._where))]
         return self
 
@@ -252,6 +270,7 @@ class Query(object):
         return Query(session, entity)
 
     def copy(self):
+        """Create a new copy of the class."""
         cls = Query.new(session=self._session, entity=self._entity)
         cls._entity = self._entity
         cls._where = list(self._where)
@@ -277,25 +296,55 @@ class Query(object):
         return self._session.ensure(self._entity, kwargs)
 
     def one(self):
+        """Returns and expects a single query result."""
         return self._session.query(str(self)).one()
 
     def first(self):
+        """Returns the first available query result, or None."""
         return self._session.query(str(self)).first()
 
     def all(self):
+        """Returns every query result."""
         return self._session.query(str(self)).all()
 
-    def count(self):
-        return len(self)
-
     def keys(self):
+        """Get the keys related to an entity.
+        As these are dynamically generated, the first call on an entity
+        will perform a query, the results are then cached for later.
+        """
         if self._entity not in self._EntityKeyCache:
             self._EntityKeyCache[self._entity] = self.first().keys()
         return self._EntityKeyCache[self._entity]
 
     @clone_instance
     def where(self, *args, **kwargs):
-        """Filter the result."""
+        """Filter the result.
+        Different types of arguments are allowed.
+        
+        args:
+            Query: An unexecuted query object.
+                This is not recommended, but an attempt will be made
+                to execute it for a single result.
+                It will raise an exception if multiple or none are
+                found.
+
+            dict: Like kargs, but with relationships allowed.
+                A relationship like "parent.name" is not compatible 
+                with **kwargs, so there needed to be an alternative
+                way to set it without constructing a new Query object.
+
+            Entity: FTrack API object.
+                Every entity has a unique ID, so this can be safely
+                relied upon when building the query.
+
+            Anything else passed in will get converted to strings.
+            The comparison class has been designed to evaluate when
+            __str__ is called, but any custom class could be used.
+
+        kwargs:
+            Search for attributes of an entity.
+            This is the recommended way to query if possible.
+        """
         for arg in args:
             # The query has not been performed, attempt to execute
             # This shouldn't really be used, so don't catch any errors
@@ -322,35 +371,40 @@ class Query(object):
 
     @clone_instance
     def populate(self, *args):
+        """Prefetch attributes with the query.""" 
         self._populate += map(str, args)
         return self
     select = populate
 
     @clone_instance
-    def sort(self, value, desc=None, asc=None):
+    def sort(self, attribute, desc=None, asc=None):
+        """Sort the query results."""
         if desc is not None and asc is not None:
             raise ValueError('sorting cannot be both descending and ascending')
         elif desc is None and asc is None:
             desc = False
         elif asc is not None:
             desc = not asc
-        self._sort.append((value, desc))
+        self._sort.append((attribute, desc))
         return self
     order = sort
 
     @clone_instance
     def offset(self, value):
+        """Offset the results when a limit is used."""
         self._offset = value
         return self
 
     @clone_instance
     def limit(self, value):
+        """Limit the total number of results."""
         self._limit = value
         return self
 
 
 class QueryNote(Query):
     def __init__(self, session):
+        """Initialise as the Note entity."""
         super(QueryNote, self).__init__(session, 'Note')
 
     def create(self, **kwargs):
@@ -376,34 +430,43 @@ class QueryNote(Query):
 
         for recipient in recipients:
             if recipient.__class__.__name__ != 'Recipient':
-                recipient = self._session.Recipient.create(note_id=note['id'], resource_id=recipient['id'])
+                recipient = self._session.Recipient.create(
+                    note_id=note['id'], 
+                    resource_id=recipient['id']
+                )
             note['recipients'].append(recipient)
         if category:
-            entity = self._session.NoteLabelLink.create(note_id=note['id'], label_id=category['id'])
+            entity = self._session.NoteLabelLink.create(
+                note_id=note['id'],
+                label_id=category['id']
+            )
             note['note_label_links'].append(entity)
         return note
 
 
 class QueryUser(Query):
     def __init__(self, session):
+        """Initialise as the User entity."""
         super(QueryUser, self).__init__(session, 'User')
 
     def ensure(self, **kwargs):
+        """Set the identifying key as username."""
         return self._session.ensure(self._entity, kwargs, identifying_keys=['username'])
 
 
 class FTrackQuery(ftrack_api.Session):
+    """Expansion of the ftrack_api.Session class."""
     exc = ftrack_api.exception
     symbol = ftrack_api.symbol
     Entity = ftrack_api.entity.base.Entity
 
-    def __init__(self, server_url=None, api_key=None, api_user=None, debug=False, **kwargs):
-        self.debug = debug
-        try:
-            super(FTrackQuery, self).__init__(server_url=server_url, api_key=api_key, api_user=api_user, **kwargs)
-        except (TypeError, ftrack_api.exception.ServerError):
-            if not self.debug:
-                raise
+    def __init__(self, **kwargs):
+        """Attempt to initialise the connection.
+        If the debug argument is set, the connection will be ignored.
+        """
+        self.debug = kwargs.pop('debug', False)
+        if not self.debug:
+            super(FTrackQuery, self).__init__(**kwargs)
         logger.debug('New session initialised.')
 
     def __getattr__(self, attr):
@@ -411,13 +474,16 @@ class FTrackQuery(ftrack_api.Session):
         return Query.new(self, attr)
     
     def __exit__(self, *args):
+        """Override __exit__ to not break if debug mode is set."""
         if not self.debug:
             return super(FTrackQuery, self).__exit__(*args)
 
     def get(self, id):
+        """Get any entity from its ID."""
         logger.debug('Get (Context): '+id)
         return super(FTrackQuery, self).get('Context', id)
 
     def query(self, query):
+        """Create an FTrack query object from a string."""
         logger.debug('Query: '+query)
         return super(FTrackQuery, self).query(query)
