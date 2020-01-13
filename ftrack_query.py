@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'and_', 'or_']
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 import logging
 import os
@@ -282,7 +282,7 @@ class Query(object):
 
     def get(self, value):
         """Get an entity from the ID."""
-        logger.debug('Get ({}): {}'.format(self._entity, value))
+        self._session._logger.debug('Get ({}): {}'.format(self._entity, value))
         return super(FTrackQuery, self._session).get(self._entity, value)
 
     def create(self, **kwargs):
@@ -465,9 +465,10 @@ class FTrackQuery(ftrack_api.Session):
         If the debug argument is set, the connection will be ignored.
         """
         self.debug = kwargs.pop('debug', False)
+        self._logger = kwargs.pop('logger', logger)
         if not self.debug:
             super(FTrackQuery, self).__init__(**kwargs)
-        logger.debug('New session initialised.')
+        self._logger.debug('New session initialised.')
 
     def __getattr__(self, attr):
         """Get entity."""
@@ -480,10 +481,10 @@ class FTrackQuery(ftrack_api.Session):
 
     def get(self, id):
         """Get any entity from its ID."""
-        logger.debug('Get (Context): '+id)
+        self._logger.debug('Get (Context): '+id)
         return super(FTrackQuery, self).get('Context', id)
 
     def query(self, query):
         """Create an FTrack query object from a string."""
-        logger.debug('Query: '+query)
+        self._logger.debug('Query: '+query)
         return super(FTrackQuery, self).query(query)
