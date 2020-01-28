@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'and_', 'or_']
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 import logging
 import os
@@ -267,6 +267,8 @@ class Query(object):
             return QueryNote(session)
         if entity == 'User':
             return QueryUser(session)
+        if entity == 'CalendarEvent':
+            return QueryCalendarEvent(session)
         return Query(session, entity)
 
     def copy(self):
@@ -410,12 +412,12 @@ class QueryNote(Query):
     def create(self, **kwargs):
         """Handle special cases when creating notes.
 
-        Recipients:
-            Can be a Group/User contained within a Recipient entity.
-            For ease of use, a Recipient will be automatically created
+        recipients:
+            This is a link between group/user and notes.
+            For ease of use, the entity will be automatically created
             if another entity type is given.
 
-        Category:
+        category:
             According to the API code, categories will be deprecated,
             and NoteLabelLinks should be used instead. This deals with
             the conversion automatically.
@@ -426,21 +428,25 @@ class QueryNote(Query):
             recipients = []
         category = kwargs.pop('category', None)
 
-        note = self._session.create(self._entity, kwargs)
+        note = super(QueryNote, self).create(**kwargs)
 
         for recipient in recipients:
             if recipient.__class__.__name__ != 'Recipient':
                 recipient = self._session.Recipient.create(
-                    note_id=note['id'], 
-                    resource_id=recipient['id']
+                    note=note,
+                    note_id=note['id'],
+                    resource=recipient,
+                    resource_id=recipient['id'],
                 )
             note['recipients'].append(recipient)
         if category:
-            entity = self._session.NoteLabelLink.create(
+            link = self._session.NoteLabelLink.create(
                 note_id=note['id'],
-                label_id=category['id']
+                label_id=category['id'],
             )
-            note['note_label_links'].append(entity)
+            link['note'] = note
+            link['label'] = category
+            note['note_label_links'].append(link)
         return note
 
 
@@ -452,6 +458,36 @@ class QueryUser(Query):
     def ensure(self, **kwargs):
         """Set the identifying key as username."""
         return self._session.ensure(self._entity, kwargs, identifying_keys=['username'])
+
+
+class QueryCalendarEvent(Query):
+    def __init__(self, session):
+        """Initialise as the CalendarEvent entity."""
+        super(QueryCalendarEvent, self).__init__(session, 'CalendarEvent')
+
+    def create(self, **kwargs):
+        """Handle special cases when creating calendar events.
+
+        calendar_event_resources:
+            This is a link between user and calendar events.
+            For ease of use, the entity will be automatically created
+            if another entity type is given.
+        """
+        try:
+            resources = kwargs.pop('calendar_event_resources', [])
+        except TypeError:
+            resources = []
+        calendar_event = super(QueryCalendarEvent, self).create(**kwargs)
+
+        for resource in resources:
+            if resource.__class__.__name__ != 'CalendarEventResource':
+                resource = self._session.CalendarEventResource.create(
+                    calendar_event=calendar_event,
+                    resource=resource,
+                    resource_id=resource['id'],
+                )
+            calendar_event['calendar_event_resources'].append(resource)
+        return calendar_event
 
 
 class FTrackQuery(ftrack_api.Session):
