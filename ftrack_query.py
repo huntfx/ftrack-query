@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'and_', 'or_']
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 import logging
 import os
@@ -54,6 +54,60 @@ def convert_arg_entity(func):
     return wrapper
 
 
+def parse_inputs(*args, **kwargs):
+    """Convert multiple inputs into Comparison objects.
+    Different types of arguments are allowed.
+
+    args:
+        Query: An unexecuted query object.
+            This is not recommended, but an attempt will be made
+            to execute it for a single result.
+            It will raise an exception if multiple or none are
+            found.
+
+        dict: Like kargs, but with relationships allowed.
+            A relationship like "parent.name" is not compatible
+            with **kwargs, so there needed to be an alternative
+            way to set it without constructing a new Query object.
+
+        Entity: FTrack API object.
+            Every entity has a unique ID, so this can be safely
+            relied upon when building the query.
+
+        Anything else passed in will get converted to strings.
+        The comparison class has been designed to evaluate when
+        __str__ is called, but any custom class could be used.
+
+    kwargs:
+        Search for attributes of an entity.
+        This is the recommended way to query if possible.
+    """
+
+    comparison = kwargs.pop('__cmp__', 'is')
+    for arg in args:
+        # The query has not been performed, attempt to execute
+        # This shouldn't really be used, so don't catch any errors
+        if isinstance(arg, Query):
+            arg = arg.one()
+
+        if isinstance(arg, dict):
+            for key, value in arg.items():
+                yield Comparison(key)==value
+
+        # Attempt to convert entity to lowercase name with ID
+        # For example, "<Project>" will evaluate to "project.id is <Project['id']>"
+        elif isinstance(arg, ftrack_api.entity.base.Entity):
+            yield '{} {} {}'.format(get_key_from_entity(arg)+'.id', comparison, arg['id'])
+
+        # The object is likely a comparison object, so convert to str
+        # If an actual string is input, then assume it's valid syntax
+        else:
+            yield str(arg)
+
+    for key, value in kwargs.items():
+        yield Comparison(key)==value
+
+
 _UC_REMAP = {u: '_'+l for l, u in zip(ascii_lowercase, ascii_uppercase)}
 def get_key_from_entity(entity):
     """Guess the attribute that would be given to an entity.
@@ -67,7 +121,7 @@ def get_key_from_entity(entity):
         entity = entity.__class__.__name__
     if entity == 'NoteLabel':
         return 'category'
-    
+
     return ''.join(_UC_REMAP.get(c, c) for c in entity).lstrip('_')
 
 
@@ -117,7 +171,7 @@ class Comparison(object):
 
     def __invert__(self):
         return self.__class__('not '+self.value)
-    
+
     def __call__(self, value):
         """Cast a relation to a concrete type.
         One example would be TypedContext.parent(Project), where it
@@ -190,11 +244,13 @@ class Comparison(object):
 
     @convert_arg_entity
     def has(self, *args, **kwargs):
-        return self.__class__('{} has ({})'.format(self.value, and_(*args, **kwargs)))
+        where = parse_inputs(*args, **kwargs)
+        return self.__class__('{} has ({})'.format(self.value, and_(*where)))
 
     @convert_arg_entity
     def any(self, *args, **kwargs):
-        return self.__class__('{} any ({})'.format(self.value, and_(*args, **kwargs)))
+        where = parse_inputs(*args, **kwargs)
+        return self.__class__('{} any ({})'.format(self.value, and_(*where)))
 
 
 class Query(object):
@@ -214,6 +270,7 @@ class Query(object):
         This executes the query so should not be used lightly.
         """
         return len(self.all())
+    length = __len__
 
     def __getattr__(self, attr):
         """Get an entity attribute.
@@ -234,7 +291,7 @@ class Query(object):
             query.insert(-1, 'where')
         if self._sort:
             query.append('order by')
-            sort = ('{}{}'.format(value, ('', ' descending')[descending]) 
+            sort = ('{}{}'.format(value, ('', ' descending')[descending])
                     for value, descending in self._sort)
             query.append(', '.join(sort))
         if self._offset:
@@ -320,60 +377,13 @@ class Query(object):
 
     @clone_instance
     def where(self, *args, **kwargs):
-        """Filter the result.
-        Different types of arguments are allowed.
-        
-        args:
-            Query: An unexecuted query object.
-                This is not recommended, but an attempt will be made
-                to execute it for a single result.
-                It will raise an exception if multiple or none are
-                found.
-
-            dict: Like kargs, but with relationships allowed.
-                A relationship like "parent.name" is not compatible 
-                with **kwargs, so there needed to be an alternative
-                way to set it without constructing a new Query object.
-
-            Entity: FTrack API object.
-                Every entity has a unique ID, so this can be safely
-                relied upon when building the query.
-
-            Anything else passed in will get converted to strings.
-            The comparison class has been designed to evaluate when
-            __str__ is called, but any custom class could be used.
-
-        kwargs:
-            Search for attributes of an entity.
-            This is the recommended way to query if possible.
-        """
-        for arg in args:
-            # The query has not been performed, attempt to execute
-            # This shouldn't really be used, so don't catch any errors
-            if isinstance(arg, Query):
-                arg = arg.one()
-
-            if isinstance(arg, dict):
-                for key, value in arg.items():
-                    self._where.append(Comparison(key)==value)
-
-            # Attempt to convert entity to lowercase name with ID
-            # For example, "<Project>" will evaluate to "project.id is <Project['id']>"
-            elif isinstance(arg, ftrack_api.entity.base.Entity):
-                self._where.append('{} is {}'.format(get_key_from_entity(arg)+'.id', arg['id']))
-
-            # The object is likely a comparison object, so convert to str
-            # If an actual string is input, then assume it's valid syntax
-            else:
-                self._where.append(str(arg))
-        
-        for key, value in kwargs.items():
-            self._where.append(Comparison(key)==value)
+        """Filter the result."""
+        self._where += list(parse_inputs(*args, **kwargs))
         return self
 
     @clone_instance
     def populate(self, *args):
-        """Prefetch attributes with the query.""" 
+        """Prefetch attributes with the query."""
         self._populate += map(str, args)
         return self
     select = populate
@@ -509,7 +519,7 @@ class FTrackQuery(ftrack_api.Session):
     def __getattr__(self, attr):
         """Get entity."""
         return Query.new(self, attr)
-    
+
     def __exit__(self, *args):
         """Override __exit__ to not break if debug mode is set."""
         if not self.debug:
