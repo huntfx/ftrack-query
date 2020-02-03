@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'and_', 'or_']
-__version__ = '1.0.3'
+__version__ = '1.0.4'
 
 import logging
 import os
@@ -339,10 +339,16 @@ class Query(object):
         cls._limit = self._limit
         return cls
 
-    def get(self, value):
-        """Get an entity from the ID."""
-        self._session._logger.debug('Get ({}): {}'.format(self._entity, value))
-        return super(FTrackQuery, self._session).get(self._entity, value)
+    def get(self, value, _value=None):
+        """Get an entity from the ID.
+        The _value argument is for compatibility with ftrack_api.Session.
+        """
+        if _value is None:
+            entity = self._entity
+        else:
+            entity, value = value, _value
+        self._session._logger.debug('Get ({}): {}'.format(entity, value))
+        return super(FTrackQuery, self._session).get(entity, value)
 
     def create(self, **kwargs):
         """Create a new entity."""
@@ -525,10 +531,16 @@ class FTrackQuery(ftrack_api.Session):
         if not self.debug:
             return super(FTrackQuery, self).__exit__(*args)
 
-    def get(self, id):
-        """Get any entity from its ID."""
-        self._logger.debug('Get (Context): '+id)
-        return super(FTrackQuery, self).get('Context', id)
+    def get(self, value, _value=None):
+        """Get any entity from its ID.
+        The _value argument is for compatibility with ftrack_api.Session.
+        """
+        if _value is None:
+            entity = 'Context'
+        else:
+            entity, value = value, _value
+        self._session._logger.debug('Get ({}): {}'.format(entity, value))
+        return super(FTrackQuery, self).get(entity, value)
 
     def query(self, query):
         """Create an FTrack query object from a string."""
