@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'and_', 'or_']
-__version__ = '1.0.5'
+__version__ = '1.1.0'
 
 import logging
 import os
@@ -524,9 +524,16 @@ class FTrackQuery(ftrack_api.Session):
             super(FTrackQuery, self).__init__(**kwargs)
         self._logger.debug('New session initialised.')
 
-    def __getattr__(self, attr):
-        """Get entity."""
-        return Query.new(self, attr)
+    def __getattribute__(self, attr):
+        """Get an entity type if it exists.
+        The standard AttributeError will be raised if not.
+        """
+        try:
+            return super(FTrackQuery, self).__getattribute__(attr)
+        except AttributeError:
+            if attr in super(FTrackQuery, self).__getattribute__('types'):
+                return Query.new(self, attr)
+            raise
 
     def __exit__(self, *args):
         """Override __exit__ to not break if debug mode is set."""
@@ -554,3 +561,9 @@ class FTrackQuery(ftrack_api.Session):
         """Delete an FTrack entity."""
         self._logger.debug('Delete: '+entity.__repr__())
         return super(FTrackQuery, self).delete(entity)
+
+
+# Quick access to a query object for comparisons
+# An example would be "session.Episode.where(Null.project.name=='Project')"
+# instead of "session.Episode.where(session.Episode.project.name=='Project')"
+Null = Query.new(None, None)
