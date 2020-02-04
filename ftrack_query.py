@@ -4,7 +4,7 @@ Querying and creating is supported, and extra functionality will be
 added if the need arises.
 """
 
-__all__ = ['FTrackQuery', 'and_', 'or_']
+__all__ = ['FTrackQuery', 'Null', 'and_', 'or_']
 __version__ = '1.1.0'
 
 import logging
