@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'and_', 'or_']
-__version__ = '1.0.4'
+__version__ = '1.0.5'
 
 import logging
 import os
@@ -105,6 +105,8 @@ def parse_inputs(*args, **kwargs):
             yield str(arg)
 
     for key, value in kwargs.items():
+        if isinstance(value, Query):
+            value = value.one()
         yield Comparison(key)==value
 
 
@@ -539,10 +541,16 @@ class FTrackQuery(ftrack_api.Session):
             entity = 'Context'
         else:
             entity, value = value, _value
-        self._session._logger.debug('Get ({}): {}'.format(entity, value))
+        self._logger.debug('Get ({}): {}'.format(entity, value))
         return super(FTrackQuery, self).get(entity, value)
 
     def query(self, query):
         """Create an FTrack query object from a string."""
+        query = str(query)
         self._logger.debug('Query: '+query)
         return super(FTrackQuery, self).query(query)
+
+    def delete(self, entity):
+        """Delete an FTrack entity."""
+        self._logger.debug('Delete: '+entity.__repr__())
+        return super(FTrackQuery, self).delete(entity)
