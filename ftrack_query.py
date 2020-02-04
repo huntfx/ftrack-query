@@ -421,6 +421,17 @@ class Query(object):
         self._limit = value
         return self
 
+    @clone_instance
+    def __reversed__(self):
+        """Reverse the order of results.
+        This is designed to only work on previous sorts, so will not
+        have any effect if no sorts have been performed. Any future
+        sorts are not affected.
+        """
+        self._sort = [(attr, not order) for attr, order in self._sort]
+        return self
+    reverse = __reversed__
+
 
 class QueryNote(Query):
     def __init__(self, session):
