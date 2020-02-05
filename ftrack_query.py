@@ -29,8 +29,6 @@ def convert_output_value(value):
     """Convert the output value to something that FTrack understands.
     As of right now, this is adding speech marks.
     """
-    if isinstance(value, ftrack_api.entity.base.Entity):
-        return func(self, '"{}"'.format(value['id']), base=self.value+'.id')
     if value is None:
         return 'none'
     else:
@@ -43,7 +41,7 @@ def parse_operators(func):
     def wrapper(self, value):
         # If an entity is passed in, use the ID
         if isinstance(value, ftrack_api.entity.base.Entity):
-            return func(self, '"{}"'.format(value['id']), base=self.value+'.id')
+            return func(self, convert_output_value(value['id']), base=self.value+'.id')
         return func(self, convert_output_value(value))
     return wrapper
 
@@ -91,11 +89,11 @@ def parse_inputs(*args, **kwargs):
         # Attempt to convert entity to lowercase name with ID
         # For example, "<Project>" will evaluate to 'project.id is "<Project['id']>"'
         elif isinstance(arg, ftrack_api.entity.base.Entity):
-            yield ' '.join(
+            yield ' '.join([
                 get_key_from_entity(arg)+'.id',
                 comparison,
                 convert_output_value(arg['id'])
-            )
+            ])
 
         # The object is likely a comparison object, so convert to str
         # If an actual string is input, then assume it's valid syntax
