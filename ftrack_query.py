@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'Null', 'and_', 'or_']
-__version__ = '1.1.1'
+__version__ = '1.2.0'
 
 import logging
 import os
@@ -161,7 +161,7 @@ class Comparison(object):
     def __invert__(self):
         return self.__class__('not '+self.value)
 
-    def __call__(self, value):
+    def __getitem__(self, value):
         """Cast a relation to a concrete type.
         One example would be TypedContext.parent(Project), where it
         will limit the TypedContext search to the direct children of

@@ -8,15 +8,16 @@ This class expands upon `ftrack_api.Session`.
 ```python
 with FTrackQuery() as session:
     Task = session.Task
+    User = session.User
 
     note = session.Note.create(
         content='My new note',
-        author=session.User.where(username='peter').one(),
+        author=User.where(User.thumbnail!=None, first_name='peter').one(),
         category=session.NoteLabel.where(name='Internal').one(),
     )
     task = Task.where(Task.parent==session.Episode.first(), name='My Task').first()
     task['notes'].append(note)
-    
+
     session.commit()
 ```
 
@@ -62,5 +63,5 @@ User.where(~User.timelogs.any())
 Project.select('full_name', 'status.name')
 
 # select name from Project where allocations.resource[Group].memberships any (user.username is "john_doe")
-Project.select('name').where(Project.allocations.resource(Group).memberships.any(Project.user.username=='john_doe'))
+Project.select('name').where(Project.allocations.resource[Group].memberships.any(Membership.user.username=='john_doe'))
 ```
