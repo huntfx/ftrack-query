@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'Null', 'and_', 'or_']
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 
 import logging
 import os
@@ -25,32 +25,26 @@ def clone_instance(func):
     return wrapper
 
 
-def parse_value(func):
-    """Construct a string from the inputs."""
+def convert_output_value(value):
+    """Convert the output value to something that FTrack understands.
+    As of right now, this is adding speech marks.
+    """
+    if isinstance(value, ftrack_api.entity.base.Entity):
+        return func(self, '"{}"'.format(value['id']), base=self.value+'.id')
+    if value is None:
+        return 'none'
+    else:
+        return '"{}"'.format(value)
+
+
+def parse_operators(func):
+    """Parse the value when an operator is used."""
     @wraps(func)
     def wrapper(self, value):
         # If an entity is passed in, use the ID
         if isinstance(value, ftrack_api.entity.base.Entity):
             return func(self, '"{}"'.format(value['id']), base=self.value+'.id')
-
-        if value is None:
-            value = 'none'
-        else:
-            value = '"{}"'.format(value)
-        return func(self, value)
-    return wrapper
-
-
-def convert_arg_entity(func):
-    """Convert any entity arguments to keys."""
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        args = list(args)
-        for i, arg in enumerate(args):
-            if isinstance(arg, ftrack_api.entity.base.Entity):
-                comparison = getattr(Query(None, None), get_key_from_entity(arg))
-                args[i] = comparison.id == arg['id']
-        return func(self, *args, **kwargs)
+        return func(self, convert_output_value(value))
     return wrapper
 
 
@@ -95,14 +89,18 @@ def parse_inputs(*args, **kwargs):
                 yield Comparison(key)==value
 
         # Attempt to convert entity to lowercase name with ID
-        # For example, "<Project>" will evaluate to "project.id is <Project['id']>"
+        # For example, "<Project>" will evaluate to 'project.id is "<Project['id']>"'
         elif isinstance(arg, ftrack_api.entity.base.Entity):
-            yield '{} {} {}'.format(get_key_from_entity(arg)+'.id', comparison, arg['id'])
+            yield ' '.join(
+                get_key_from_entity(arg)+'.id',
+                comparison,
+                convert_output_value(arg['id'])
+            )
 
         # The object is likely a comparison object, so convert to str
         # If an actual string is input, then assume it's valid syntax
         else:
-            yield str(arg)
+            yield arg
 
     for key, value in kwargs.items():
         if isinstance(value, Query):
@@ -123,7 +121,6 @@ def get_key_from_entity(entity):
         entity = entity.__class__.__name__
     if entity == 'NoteLabel':
         return 'category'
-
     return ''.join(_UC_REMAP.get(c, c) for c in entity).lstrip('_')
 
 
@@ -134,19 +131,11 @@ class Criteria(object):
         self.brackets = brackets
 
     def __call__(self, *args, **kwargs):
-        query = []
-        if kwargs:
-            query.append(' {} '.format(self.operator).join(
-                '{} is "{}"'.format(k, v) for k, v in kwargs.items()
-            ))
-            if args:
-                query.append(self.operator)
-        if args:
-            query.append(' {} '.format(self.operator).join(map(str, args)))
-
-        if self.brackets and len(args) + len(kwargs) > 1:
-            return Comparison('('+' '.join(query)+')')
-        return Comparison(' '.join(query))
+        query_parts = list(parse_inputs(*args, **kwargs))
+        query = ' {} '.format(self.operator).join(map(str, query_parts))
+        if self.brackets and len(query_parts) > 1:
+            return Comparison('({})'.format(query))
+        return Comparison(query)
 
 
 and_ = Criteria('and', brackets=False)
@@ -157,7 +146,7 @@ or_ = Criteria('or', brackets=True)
 class Comparison(object):
     """Deal with individual query comparisons."""
     def __init__(self, value):
-        self.value = str(value)
+        self.value = value
 
     def __getattr__(self, attr):
         """Get sub-attributes of the entity attributes.
@@ -182,74 +171,72 @@ class Comparison(object):
         """
         return self.__class__('{}[{}]'.format(self.value, value))
 
-    @parse_value
+    @parse_operators
     def __eq__(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} is {}'.format(base, value))
     is_ = __eq__
 
-    @parse_value
+    @parse_operators
     def __ne__(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} is_not {}'.format(base, value))
     is_not = __ne__
 
-    @parse_value
+    @parse_operators
     def __gt__(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} > {}'.format(base, value))
 
-    @parse_value
+    @parse_operators
     def __ge__(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} >= {}'.format(base, value))
 
-    @parse_value
+    @parse_operators
     def __lt__(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} < {}'.format(base, value))
 
-    @parse_value
+    @parse_operators
     def __le__(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} <= {}'.format(base, value))
 
-    @parse_value
+    @parse_operators
     def like(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} like {}'.format(base, value))
 
-    @parse_value
+    @parse_operators
     def not_like(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} not_like {}'.format(base, value))
 
-    @parse_value
+    @parse_operators
     def after(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} after {}'.format(base, value))
 
-    @parse_value
+    @parse_operators
     def before(self, value, base=None):
         if base is None:
             base = self.value
         return self.__class__('{} before {}'.format(base, value))
 
-    @convert_arg_entity
     def has(self, *args, **kwargs):
         where = parse_inputs(*args, **kwargs)
         return self.__class__('{} has ({})'.format(self.value, and_(*where)))
 
-    @convert_arg_entity
     def any(self, *args, **kwargs):
         where = parse_inputs(*args, **kwargs)
         return self.__class__('{} any ({})'.format(self.value, and_(*where)))
@@ -542,7 +529,7 @@ class FTrackQuery(ftrack_api.Session):
         try:
             return super(FTrackQuery, self).__getattribute__(attr)
         except AttributeError:
-            if attr in super(FTrackQuery, self).__getattribute__('types'):
+            if self.debug or attr in super(FTrackQuery, self).__getattribute__('types'):
                 return Query.new(self, attr)
             raise
 
