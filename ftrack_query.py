@@ -31,8 +31,9 @@ def convert_output_value(value):
     """
     if value is None:
         return 'none'
-    else:
-        return '"{}"'.format(value)
+    elif isinstance(value, (float, int)):
+        return value
+    return '"{}"'.format(value)
 
 
 def parse_operators(func):
