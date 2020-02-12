@@ -1,10 +1,56 @@
 # ftrack-query
-Easy query generation for the FTrack API. The official module is very powerful and well designed, but the custom SQL is not very pythonic to use, and dynamically generating queries can be difficult.
-This was created as an object orientated approach to building queries, using inspiration from the design of SQLAlchemy.
+FTrack Query is an object-orientated wrapper over the FTrack API. While the default query syntax is powerful, it is entirely text based so dynamic queries can be difficult to construct. This module supports **and**/**or** operators with nested comparisons.
 
-This class expands upon `ftrack_api.Session`.
+It is recommended to first read http://ftrack-python-api.rtd.ftrack.com/en/1.7.0/tutorial.html for a basic understanding of how the FTrack API works.
 
-## Example Usage
+# Reference
+
+## FTrackQuery
+Main class inherited from `ftrack_api.Session`.
+
+## Query
+Every available entity type is an attribute of a session. What was originally `session.query('Note')` is now `session.Note`. This results in the `Query` object, which is used for constructing and executing queries.
+
+### .where(\*args, \*\*kwargs)
+Filter the result.
+
+Using kwargs is the recommended way, with a syntax like `.where(first_name='Peter', last_name='Hunt')`.
+
+Using args is required for complex queries. This uses the `Comparison` object, which is automatically created when comparing multiple `Query` objects. An example would be `.where(entity.project.metadata.any(entity.key!='disabled'))`.
+
+### .populate(\*args) | .select(\*args)
+Pre-fetch entity attributes.
+
+An an example, in order to iterate through the name of every user, it would be a good idea to prefetch `first_name` and `last_name`, as otherwise two queries will be performed for each individual user.
+
+### .sort(attribute, desc/asc=None)
+Sort the results by a certain attribute. Either `desc` or `asc` can be passed in as an argument, otherwise the results will default to ascending.
+
+### .reverse()
+Reverse the sorting direction.
+
+### .limit(value)
+Limit the amount of results to a certain value.
+
+### .offset(value)
+In the case of using a limit, this applies an offset to the result that is returned.
+
+## Comparison
+The `Comparison` object is designed to convert data to a string. It contains a wide array of operators that can be used against any data type, including other `Comparison` objects.
+
+Any comparison can be reversed with the `~` prefix.
+
+- String Comparison: `entity.attr=='value'`
+- Number comparison: `entity.attr>5`
+- Pattern Comparison: `entity.attr.like('value%')`
+- Time Comparison: `entity.attr.after(arrow.now().floor('day'))`
+- Scalar Relationship: `entity.attr.has(subattr='value')`
+- Collection Relationship: `entity.attr.any(subattr='value')`
+
+## and_(\*args, \*\*kwargs) | or_(\*args, \*\*kwargs)
+Join multiple comparisons. `and_` is used by default if nothing is provided.
+
+## Example
 ```python
 with FTrackQuery() as session:
     Task = session.Task
