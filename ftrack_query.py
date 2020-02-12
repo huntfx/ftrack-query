@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.2.1'
+__version__ = '1.2.2'
 
 import logging
 import os
@@ -558,6 +558,10 @@ class FTrackQuery(ftrack_api.Session):
         """Delete an FTrack entity."""
         self._logger.debug('Delete: '+entity.__repr__())
         return super(FTrackQuery, self).delete(entity)
+
+    def where(self, *args, **kwargs):
+        """Set entity type as TypedContext if none provided."""
+        return self.TypedContext.where(*args, **kwargs)
 
 
 # Quick access to a query object for comparisons
