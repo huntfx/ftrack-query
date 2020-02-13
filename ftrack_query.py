@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 
 import logging
 import os
@@ -378,12 +378,19 @@ class Query(object):
     @clone_instance
     def populate(self, *args):
         """Prefetch attributes with the query."""
+        # Allow empty string or None without breaking
+        try:
+            if not args[0] and len(args) == 1:
+                return self
+        except IndexError:
+            return self
+
         self._populate += map(str, args)
         return self
     select = populate
 
     @clone_instance
-    def sort(self, attribute, desc=None, asc=None):
+    def sort(self, attribute=None, desc=None, asc=None):
         """Sort the query results."""
         if desc is not None and asc is not None:
             raise ValueError('sorting cannot be both descending and ascending')
@@ -391,18 +398,22 @@ class Query(object):
             desc = False
         elif asc is not None:
             desc = not asc
-        self._sort.append((attribute, desc))
+
+        if attribute is None:
+            self._sort = []
+        else:
+            self._sort.append((attribute, desc))
         return self
     order = sort
 
     @clone_instance
-    def offset(self, value):
+    def offset(self, value=None):
         """Offset the results when a limit is used."""
         self._offset = value
         return self
 
     @clone_instance
-    def limit(self, value):
+    def limit(self, value=None):
         """Limit the total number of results."""
         self._limit = value
         return self
