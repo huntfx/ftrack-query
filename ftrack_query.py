@@ -543,10 +543,12 @@ class FTrackQuery(ftrack_api.Session):
                 return Query.new(self, attr)
             raise
 
-    def __exit__(self, *args):
+    def __exit__(self, exctype, value, tb):
         """Override __exit__ to not break if debug mode is set."""
         if not self.debug:
-            return super(FTrackQuery, self).__exit__(*args)
+            return super(FTrackQuery, self).__exit__(exctype, value, tb)
+        if tb is not None:
+            raise value
 
     def get(self, value, _value=None):
         """Get any entity from its ID.
