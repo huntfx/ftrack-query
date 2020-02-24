@@ -1,7 +1,6 @@
 """Python wrapper over the SQL based FTrack syntax.
 Inspiration for the syntax was taken from SQLALchemy.
-Querying and creating is supported, and extra functionality will be
-added if the need arises.
+Querying and creating are supported.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
@@ -323,12 +322,6 @@ class Query(object):
     @classmethod
     def new(cls, session, entity):
         """Create a new Query object."""
-        if entity == 'Note':
-            return QueryNote(session)
-        if entity == 'User':
-            return QueryUser(session)
-        if entity == 'CalendarEvent':
-            return QueryCalendarEvent(session)
         return Query(session, entity)
 
     def copy(self):
@@ -446,92 +439,6 @@ class Query(object):
         self._sort = [(attr, not order) for attr, order in self._sort]
         return self
     reverse = __reversed__
-
-
-class QueryNote(Query):
-    def __init__(self, session):
-        """Initialise as the Note entity."""
-        super(QueryNote, self).__init__(session, 'Note')
-
-    def create(self, **kwargs):
-        """Handle special cases when creating notes.
-
-        recipients:
-            This is a link between group/user and notes.
-            For ease of use, the entity will be automatically created
-            if another entity type is given.
-
-        category:
-            According to the API code, categories will be deprecated,
-            and NoteLabelLinks should be used instead. This deals with
-            the conversion automatically.
-        """
-        try:
-            recipients = list(kwargs.pop('recipients', []))
-        except TypeError:
-            recipients = []
-        category = kwargs.pop('category', None)
-
-        note = super(QueryNote, self).create(**kwargs)
-
-        for recipient in recipients:
-            if recipient.__class__.__name__ != 'Recipient':
-                recipient = self._session.Recipient.create(
-                    note=note,
-                    note_id=note['id'],
-                    resource=recipient,
-                    resource_id=recipient['id'],
-                )
-            note['recipients'].append(recipient)
-        if category:
-            link = self._session.NoteLabelLink.create(
-                note_id=note['id'],
-                label_id=category['id'],
-            )
-            link['note'] = note
-            link['label'] = category
-            note['note_label_links'].append(link)
-        return note
-
-
-class QueryUser(Query):
-    def __init__(self, session):
-        """Initialise as the User entity."""
-        super(QueryUser, self).__init__(session, 'User')
-
-    def ensure(self, **kwargs):
-        """Set the identifying key as username."""
-        return self._session.ensure(self._entity, kwargs, identifying_keys=['username'])
-
-
-class QueryCalendarEvent(Query):
-    def __init__(self, session):
-        """Initialise as the CalendarEvent entity."""
-        super(QueryCalendarEvent, self).__init__(session, 'CalendarEvent')
-
-    def create(self, **kwargs):
-        """Handle special cases when creating calendar events.
-
-        calendar_event_resources:
-            This is a link between user and calendar events.
-            For ease of use, the entity will be automatically created
-            if another entity type is given.
-        """
-        try:
-            resources = kwargs.pop('calendar_event_resources', [])
-        except TypeError:
-            resources = []
-        calendar_event = super(QueryCalendarEvent, self).create(**kwargs)
-
-        for resource in resources:
-            if resource.__class__.__name__ != 'CalendarEventResource':
-                resource = self._session.CalendarEventResource.create(
-                    calendar_event=calendar_event,
-                    resource=resource,
-                    resource_id=resource['id'],
-                )
-            calendar_event['calendar_event_resources'].append(resource)
-        return calendar_event
 
 
 class FTrackQuery(ftrack_api.Session):
