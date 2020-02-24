@@ -5,7 +5,7 @@ added if the need arises.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.2.3'
+__version__ = '1.3.0'
 
 import logging
 import os
@@ -169,6 +169,21 @@ class Comparison(object):
         projects.
         """
         return self.__class__('{}[{}]'.format(self.value, value))
+
+    def __call__(self):
+        """Access special features based on the attribute name.
+        For example, .desc can be used as a key normally, but .desc()
+        will be used as a sort string.
+        If no override exists, then the standard TypeError will be
+        raised.
+        """
+        value, attr = self.value.rsplit('.', 1)
+        if attr == 'desc':
+            return '{} descending'.format(value)
+        elif attr == 'asc':
+            return '{} ascending'.format(value)
+        else:
+            raise TypeError("'{}' object is not callable".format(self.__class__.__name__))
 
     @parse_operators
     def __eq__(self, value, base=None):
@@ -390,14 +405,17 @@ class Query(object):
     select = populate
 
     @clone_instance
-    def sort(self, attribute=None, desc=None, asc=None):
+    def sort(self, attribute=None):
         """Sort the query results."""
-        if desc is not None and asc is not None:
-            raise ValueError('sorting cannot be both descending and ascending')
-        elif desc is None and asc is None:
-            desc = False
-        elif asc is not None:
-            desc = not asc
+        asc = desc = False
+
+        # Grab the sorting method from the string if provided
+        if attribute is not None and ' ' in attribute:
+            attribute, method = attribute.split(' ')
+            if method == 'ascending':
+                asc = True
+            elif method == 'descending':
+                desc = True
 
         if attribute is None:
             self._sort = []

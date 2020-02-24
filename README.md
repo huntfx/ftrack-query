@@ -3,6 +3,30 @@ FTrack Query is an object-orientated wrapper over the FTrack API. While the defa
 
 It is recommended to first read http://ftrack-python-api.rtd.ftrack.com/en/1.7.0/tutorial.html for a basic understanding of how the FTrack API works.
 
+
+## Example
+```python
+with FTrackQuery() as session:
+    Task = session.Task
+    User = session.User
+
+    note = session.Note.create(
+        content='My new note',
+        author=User.where(User.thumbnail!=None, first_name='peter').one(),
+        category=session.NoteLabel.where(name='Internal').one(),
+    )
+
+    task = Task.where(
+        Task.parent==session.Episode.first(),
+        name='My Task',
+    ).order(
+        Task.type.name.desc(),
+    ).first()
+
+    task['notes'].append(note)
+    session.commit()
+```
+
 # Reference
 
 ## FTrackQuery
@@ -23,8 +47,10 @@ Pre-fetch entity attributes.
 
 An an example, in order to iterate through the name of every user, it would be a good idea to prefetch `first_name` and `last_name`, as otherwise two queries will be performed for each individual user.
 
-### .sort(attribute, desc/asc=None)
-Sort the results by a certain attribute. Either `desc` or `asc` can be passed in as an argument, otherwise the results will default to ascending.
+### .sort(attribute)
+Sort the results by an attribute.
+
+The attribute and order can be given in the format `entity.name.desc()`, or as a raw string such as `name descending`.
 
 ### .reverse()
 Reverse the sorting direction.
@@ -49,23 +75,6 @@ Any comparison can be reversed with the `~` prefix.
 
 ## and_(\*args, \*\*kwargs) | or_(\*args, \*\*kwargs)
 Join multiple comparisons. `and_` is used by default if nothing is provided.
-
-## Example
-```python
-with FTrackQuery() as session:
-    Task = session.Task
-    User = session.User
-
-    note = session.Note.create(
-        content='My new note',
-        author=User.where(User.thumbnail!=None, first_name='peter').one(),
-        category=session.NoteLabel.where(name='Internal').one(),
-    )
-    task = Task.where(Task.parent==session.Episode.first(), name='My Task').first()
-    task['notes'].append(note)
-
-    session.commit()
-```
 
 ## Equivalent examples from the [API reference](http://ftrack-python-api.rtd.ftrack.com/en/0.9.0/querying.html):
 Note: If an entity type is used multiple times, it's recommended to use `<Entity> = session.<Entity>` after the session is initialised. To save space below, that part has been omitted.
