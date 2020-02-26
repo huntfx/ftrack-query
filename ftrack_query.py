@@ -169,7 +169,7 @@ class Comparison(object):
         """
         return self.__class__('{}[{}]'.format(self.value, value))
 
-    def __call__(self):
+    def __call__(self, *args, **kwargs):
         """Access special features based on the attribute name.
         For example, .desc can be used as a key normally, but .desc()
         will be used as a sort string.
@@ -400,6 +400,7 @@ class Query(object):
     @clone_instance
     def sort(self, attribute=None):
         """Sort the query results."""
+        attribute = str(attribute)
         asc = desc = False
 
         # Grab the sorting method from the string if provided
