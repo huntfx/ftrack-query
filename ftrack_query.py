@@ -464,6 +464,7 @@ class FTrackQuery(ftrack_api.Session):
         """
         self.debug = kwargs.pop('debug', False)
         self._logger = kwargs.pop('logger', logger)
+        self._logger.debug('Connecting...')
         if not self.debug:
             super(FTrackQuery, self).__init__(**kwargs)
         self._logger.debug('New session initialised.')
@@ -520,12 +521,12 @@ class FTrackQuery(ftrack_api.Session):
 
     def commit(self, *args, **kwargs):
         """Commit changes."""
-        self._logger.debug('Commit changes.')
+        self._logger.debug('Changes saved.')
         return super(FTrackQuery, self).commit(*args, **kwargs)
 
     def rollback(self, *args, **kwargs):
         """Rollback changes."""
-        self._logger.debug('Rollback changes.')
+        self._logger.debug('Changes discarded.')
         return super(FTrackQuery, self).rollback(*args, **kwargs)
 
 
