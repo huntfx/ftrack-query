@@ -4,7 +4,7 @@ Querying and creating are supported.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 
 import logging
 import os
@@ -44,6 +44,18 @@ def parse_operators(func):
             return func(self, convert_output_value(value['id']), base=self.value+'.id')
         return func(self, convert_output_value(value))
     return wrapper
+
+
+def dict_to_str(dct):
+    """Convert a dict to a string."""
+    def convert(dct):
+        for k, v in dct.items():
+            if isinstance(v, ftrack_api.entity.base.Entity):
+                v = str(v)
+            else:
+                v = v.__repr__()
+            yield '{}={}'.format(k, v)
+    return ', '.join(convert(dct))
 
 
 def parse_inputs(*args, **kwargs):
@@ -169,7 +181,7 @@ class Comparison(object):
         """
         return self.__class__('{}[{}]'.format(self.value, value))
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self):
         """Access special features based on the attribute name.
         For example, .desc can be used as a key normally, but .desc()
         will be used as a sort string.
@@ -343,8 +355,7 @@ class Query(object):
             entity = self._entity
         else:
             entity, value = value, _value
-        self._session._logger.debug('Get ({}): {}'.format(entity, value))
-        return super(FTrackQuery, self._session).get(entity, value)
+        return self._session.get(entity, value)
 
     def create(self, **kwargs):
         """Create a new entity."""
@@ -400,7 +411,6 @@ class Query(object):
     @clone_instance
     def sort(self, attribute=None):
         """Sort the query results."""
-        attribute = str(attribute)
         asc = desc = False
 
         # Grab the sorting method from the string if provided
@@ -476,7 +486,7 @@ class FTrackQuery(ftrack_api.Session):
         if tb is not None:
             raise value
 
-    def get(self, value, _value=None):
+    def get(self, value, _value=None, *args, **kwargs):
         """Get any entity from its ID.
         The _value argument is for compatibility with ftrack_api.Session.
         """
@@ -484,23 +494,39 @@ class FTrackQuery(ftrack_api.Session):
             entity = 'Context'
         else:
             entity, value = value, _value
-        self._logger.debug('Get ({}): {}'.format(entity, value))
-        return super(FTrackQuery, self).get(entity, value)
+        self._logger.debug('Get: {}({})'.format(entity, value.__repr__()))
+        return super(FTrackQuery, self).get(entity, value, *args, **kwargs)
 
-    def query(self, query):
+    def query(self, query, *args, **kwargs):
         """Create an FTrack query object from a string."""
         query = str(query)
         self._logger.debug('Query: '+query)
-        return super(FTrackQuery, self).query(query)
+        return super(FTrackQuery, self).query(query, *args, **kwargs)
 
-    def delete(self, entity):
+    def create(self, entity, data, *args, **kwargs):
+        """Create a new entity."""
+        if not kwargs.get('reconstructing', False):
+            self._logger.debug('Create: {}({})'.format(entity, dict_to_str(data)))
+        return super(FTrackQuery, self).create(entity, data, *args, **kwargs)
+
+    def delete(self, entity, *args, **kwargs):
         """Delete an FTrack entity."""
         self._logger.debug('Delete: '+entity.__repr__())
-        return super(FTrackQuery, self).delete(entity)
+        return super(FTrackQuery, self).delete(entity, *args, **kwargs)
 
     def where(self, *args, **kwargs):
         """Set entity type as TypedContext if none provided."""
         return self.TypedContext.where(*args, **kwargs)
+
+    def commit(self, *args, **kwargs):
+        """Commit changes."""
+        self._logger.debug('Commit changes.')
+        return super(FTrackQuery, self).commit(*args, **kwargs)
+
+    def rollback(self, *args, **kwargs):
+        """Rollback changes."""
+        self._logger.debug('Rollback changes.')
+        return super(FTrackQuery, self).rollback(*args, **kwargs)
 
 
 # Quick access to a query object for comparisons
