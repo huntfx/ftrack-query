@@ -480,12 +480,12 @@ class FTrackQuery(ftrack_api.Session):
                 return Query.new(self, attr)
             raise
 
-    def __exit__(self, exctype, value, tb):
+    def __exit__(self, type, value, traceback):
         """Override __exit__ to not break if debug mode is set."""
         if not self.debug:
-            return super(FTrackQuery, self).__exit__(exctype, value, tb)
-        if tb is not None:
-            raise value
+            super(FTrackQuery, self).__exit__(type, value, traceback)
+        if traceback is not None:
+            return False
 
     def get(self, value, _value=None, *args, **kwargs):
         """Get any entity from its ID.
