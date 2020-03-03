@@ -181,12 +181,13 @@ class Comparison(object):
         """
         return self.__class__('{}[{}]'.format(self.value, value))
 
-    def __call__(self):
+    def __call__(self, *args, **kwargs):
         """Access special features based on the attribute name.
         For example, .desc can be used as a key normally, but .desc()
         will be used as a sort string.
         If no override exists, then the standard TypeError will be
-        raised.
+        raised. *args and **kwargs are ignored to avoid a different
+        TypeError complaining about the number of arguments.
         """
         value, attr = self.value.rsplit('.', 1)
         if attr == 'desc':
