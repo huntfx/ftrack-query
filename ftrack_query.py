@@ -4,7 +4,7 @@ Querying and creating are supported.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.3.2'
+__version__ = '1.3.3'
 
 import logging
 import os
@@ -415,13 +415,14 @@ class Query(object):
         asc = desc = False
 
         # Grab the sorting method from the string if provided
-        if attribute is not None and ' ' in attribute:
+        if attribute is not None:
             attribute = str(attribute)
-            attribute, method = attribute.split(' ')
-            if method == 'ascending':
-                asc = True
-            elif method == 'descending':
-                desc = True
+            if ' ' in attribute:
+                attribute, method = attribute.split(' ')
+                if method == 'ascending':
+                    asc = True
+                elif method == 'descending':
+                    desc = True
 
         if attribute is None:
             self._sort = []
