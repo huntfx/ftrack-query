@@ -32,19 +32,19 @@ Main class inherited from `ftrack_api.Session`.
 ## Query
 Every available entity type is an attribute of a session. What was originally `session.query('Note')` is now `session.Note`. This results in the `Query` object, which is used for constructing and executing queries.
 
-### .where(\*args, \*\*kwargs)
+### .where(_\*args, \*\*kwargs_)
 Filter the result.
 
 Using kwargs is the recommended way, with a syntax like `.where(first_name='Peter', last_name='Hunt')`.
 
 Using args is required for complex queries. This uses the `Comparison` object, which is automatically created when comparing multiple `Query` objects. An example would be `.where(entity.project.metadata.any(entity.key!='disabled'))`.
 
-### .populate(\*args) | .select(\*args)
+### .populate(_\*args_) | .select(_\*args_)
 Pre-fetch entity attributes.
 
 An an example, in order to iterate through the name of every user, it would be a good idea to prefetch `first_name` and `last_name`, as otherwise two queries will be performed for each individual user.
 
-### .sort(attribute)
+### .sort(_attribute_)
 Sort the results by an attribute.
 
 The attribute and order can be given in the format `entity.name.desc()`, or as a raw string such as `name descending`.
@@ -52,13 +52,13 @@ The attribute and order can be given in the format `entity.name.desc()`, or as a
 ### .reverse()
 Reverse the sorting direction.
 
-### .limit(value)
+### .limit(_value_)
 Limit the amount of results to a certain value.
 
-### .offset(value)
+### .offset(_value_)
 In the case of using a limit, this applies an offset to the result that is returned.
 
-### .__call__(value)
+### .\_\_call\_\_(_value_)
 If an entity has a primary key, by calling the value of that primary key, the entity or `None` will be returned.
 Currently only `User` supports this.
 
@@ -74,7 +74,7 @@ Any comparison can be reversed with the `~` prefix.
 - Scalar Relationship: `entity.attr.has(subattr='value')`
 - Collection Relationship: `entity.attr.any(subattr='value')`
 
-## and_(\*args, \*\*kwargs) | or_(\*args, \*\*kwargs)
+## and\_(_\*args, \*\*kwargs_) | or\_(_\*args, \*\*kwargs_)
 Join multiple comparisons. `and_` is used by default if nothing is provided.
 
 ## Equivalent examples from the [API reference](http://ftrack-python-api.rtd.ftrack.com/en/0.9.0/querying.html):
