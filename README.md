@@ -7,20 +7,17 @@ It is recommended to first read http://ftrack-python-api.rtd.ftrack.com/en/1.7.0
 ## Example
 ```python
 with FTrackQuery() as session:
-    Task = session.Task
-    User = session.User
-
     note = session.Note.create(
         content='My new note',
-        author=User.where(User.thumbnail!=None, first_name='peter').one(),
-        category=session.NoteLabel.where(name='Internal').one(),
+        author=session.User('peter'),
+        category=session.NoteLabel.where(entity.color!=None, name='Internal').one(),
     )
 
-    task = Task.where(
-        Task.parent==session.Episode.first(),
+    task = session.Task.where(
+        entity.parent==session.Episode.first(),
         name='My Task',
     ).order(
-        Task.type.name.desc(),
+        entity.type.name.desc(),
     ).first()
 
     task['notes'].append(note)
@@ -61,6 +58,10 @@ Limit the amount of results to a certain value.
 ### .offset(value)
 In the case of using a limit, this applies an offset to the result that is returned.
 
+### .__call__(value)
+If an entity has a primary key, by calling the value of that primary key, the entity or `None` will be returned.
+Currently only `User` supports this.
+
 ## Comparison
 The `Comparison` object is designed to convert data to a string. It contains a wide array of operators that can be used against any data type, including other `Comparison` objects.
 
@@ -100,7 +101,7 @@ Project.where(Project.name.like('%thrones'), status='active')
 Project.where(or_(Project.name.like('%thrones'), Project.full_name.like('%thrones')), status='active')
 
 # session.query('Task where project.id is "{0}"'.format(project['id']))
-Task.where(project)
+Task.where(project=project)
 
 # session.query('Task where project.id is "{0}" and status.type.name is "Done"'.format(project['id']))
 Task.where(Task.status.type.name=='Done', project=project)

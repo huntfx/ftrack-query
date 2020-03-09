@@ -248,6 +248,10 @@ class Comparison(object):
 class Query(object):
     """Base class for constructing a query."""
     _EntityKeyCache = {}
+    _PrimaryKeys = {
+        'User': 'username',
+    }
+
     def __init__(self, session, entity):
         self._session = session
         self._entity = entity
@@ -295,7 +299,17 @@ class Query(object):
     def __call__(self, *args, **kwargs):
         """Custom error message if attempting to call.
         This is due to it being quite a common mistake.
+
+        In rare cases, it can be valid to pass in a single argument,
+        such as User('username'). The inspiration for this was taken
+        from the old API.
         """
+        if self._entity in self._PrimaryKeys and len(args) == 1 and not kwargs:
+            try:
+                return self.where(**{self._PrimaryKeys[self._entity]: args[0]}).one()
+            except ftrack_api.exception.NoResultFoundError:
+                return None
+
         raise TypeError("'Query' object is not callable, "
                         "perhaps you meant to use 'Query.where()'?")
 
