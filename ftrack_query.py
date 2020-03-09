@@ -4,7 +4,7 @@ Querying and creating are supported.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.3.3'
+__version__ = '1.4.0'
 
 import logging
 import os
@@ -87,7 +87,6 @@ def parse_inputs(*args, **kwargs):
         This is the recommended way to query if possible.
     """
 
-    comparison = kwargs.pop('__cmp__', 'is')
     for arg in args:
         # The query has not been performed, attempt to execute
         # This shouldn't really be used, so don't catch any errors
@@ -98,14 +97,8 @@ def parse_inputs(*args, **kwargs):
             for key, value in arg.items():
                 yield Comparison(key)==value
 
-        # Attempt to convert entity to lowercase name with ID
-        # For example, "<Project>" will evaluate to 'project.id is "<Project['id']>"'
         elif isinstance(arg, ftrack_api.entity.base.Entity):
-            yield ' '.join([
-                get_key_from_entity(arg)+'.id',
-                comparison,
-                convert_output_value(arg['id'])
-            ])
+            raise TypeError("keyword required for {}".format(arg))
 
         # The object is likely a comparison object, so convert to str
         # If an actual string is input, then assume it's valid syntax
@@ -116,22 +109,6 @@ def parse_inputs(*args, **kwargs):
         if isinstance(value, Query):
             value = value.one()
         yield Comparison(key)==value
-
-
-_UC_REMAP = {u: '_'+l for l, u in zip(ascii_lowercase, ascii_uppercase)}
-def get_key_from_entity(entity):
-    """Guess the attribute that would be given to an entity.
-    This is done by converting UpperCase to lower_case.
-
-    Ideally this shouldn't ever be called, but in some cases it can
-    make sense. Instead of "Task.where(project=project)", we can assume
-    the attribute is "project", and write it as "Task.where(project)".
-    """
-    if isinstance(entity, ftrack_api.entity.base.Entity):
-        entity = entity.__class__.__name__
-    if entity == 'NoteLabel':
-        return 'category'
-    return ''.join(_UC_REMAP.get(c, c) for c in entity).lstrip('_')
 
 
 class Criteria(object):
