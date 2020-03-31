@@ -4,7 +4,7 @@ Querying and creating are supported.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.4.0'
+__version__ = '1.4.1'
 
 import logging
 import os
@@ -524,7 +524,19 @@ class FTrackQuery(ftrack_api.Session):
         return super(FTrackQuery, self).rollback(*args, **kwargs)
 
 
-# Quick access to a query object for comparisons
-# An example would be "session.Episode.where(entity.project.name=='Project')"
-# instead of "session.Episode.where(session.Episode.project.name=='Project')"
-entity = Query.new(None, None)
+class _Entity(object):
+    """Quick access to a basic query object for comparisons.
+
+    Example:
+        >>> session.Episode.where(session.Episode.project.name=='Project')
+        >>> session.Episode.where(entity.project.name=='Project')
+    """
+
+    def __init__(self):
+        self._query = Query.new(None, None)
+
+    def __getattr__(self, attr):
+        """Bypass the methods of Query to just get attributes."""
+        return self._query.__getattr__(attr)
+
+entity = _Entity()

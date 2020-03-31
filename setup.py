@@ -28,7 +28,7 @@ setup(
     long_description=readme,
     long_description_content_type='text/markdown',
     author = 'Peter Hunt',
-    author_email='peterh@blue-zoo.co.uk',
+    author_email='peter@huntfx.uk',
     py_modules=['ftrack_query'],
     url = 'https://github.com/Peter92/ftrack-query',
     download_url = 'https://github.com/Peter92/ftrack-query/archive/{}.tar.gz'.format(version),
