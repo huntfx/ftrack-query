@@ -4,7 +4,7 @@ Querying and creating are supported.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.4.1'
+__version__ = '1.4.2'
 
 import logging
 import os
@@ -243,6 +243,12 @@ class Comparison(object):
     def any(self, *args, **kwargs):
         where = parse_inputs(*args, **kwargs)
         return self.__class__('{} any ({})'.format(self.value, and_(*where)))
+
+    def in_(self, subquery):
+        return self.__class__('{} in ({})'.format(self.value, subquery))
+
+    def not_in(self, subquery):
+        return ~self.in_(subquery)
 
 
 class Query(object):

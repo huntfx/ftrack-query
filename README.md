@@ -3,6 +3,8 @@ FTrack Query is an object-orientated wrapper over the FTrack API. While the defa
 
 It is recommended to first read http://ftrack-python-api.rtd.ftrack.com/en/1.7.0/tutorial.html for a basic understanding of how the FTrack API works.
 
+## Installation
+    pip install ftrack_query
 
 ## Example
 ```python
@@ -58,6 +60,9 @@ Limit the amount of results to a certain value.
 ### .offset(_value_)
 In the case of using a limit, this applies an offset to the result that is returned.
 
+### .in_(_subquery_) | .not_in(_subquery_)
+Perform a subquery to check if an attribute matches any results.
+
 ### .\_\_call\_\_(_value_)
 If an entity has a primary key, by calling the value of that primary key, the entity or `None` will be returned.
 Currently only `User` supports this.
@@ -73,6 +78,7 @@ Any comparison can be reversed with the `~` prefix.
 - Time Comparison: `entity.attr.after(arrow.now().floor('day'))`
 - Scalar Relationship: `entity.attr.has(subattr='value')`
 - Collection Relationship: `entity.attr.any(subattr='value')`
+- Subquery Relationship: `entity.attr.in_(subquery)`
 
 ## and\_(_\*args, \*\*kwargs_) | or\_(_\*args, \*\*kwargs_)
 Join multiple comparisons. `and_` is used by default if nothing is provided.
@@ -120,4 +126,7 @@ Project.select('full_name', 'status.name')
 
 # select name from Project where allocations.resource[Group].memberships any (user.username is "john_doe")
 Project.select('name').where(Project.allocations.resource[Group].memberships.any(Membership.user.username=='john_doe'))
+
+# Note where parent_id is "{version_id}" or parent_id in (select id from ReviewSessionObject where version_id is "{version_id}")
+Note.where(or_(entity.parent_id.in_(ReviewSessionObject.where(version_id=version_id).select(entity.id)), parent_id=version_id))
 ```
