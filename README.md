@@ -8,6 +8,8 @@ It is recommended to first read http://ftrack-python-api.rtd.ftrack.com/en/1.7.0
 
 ## Example
 ```python
+from ftrack_query import FTrackQuery, entity
+
 with FTrackQuery() as session:
     note = session.Note.create(
         content='My new note',
