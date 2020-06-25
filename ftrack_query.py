@@ -4,7 +4,7 @@ Querying and creating are supported.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.4.2'
+__version__ = '1.4.3'
 
 import logging
 import os
@@ -244,11 +244,22 @@ class Comparison(object):
         where = parse_inputs(*args, **kwargs)
         return self.__class__('{} any ({})'.format(self.value, and_(*where)))
 
-    def in_(self, subquery):
+    def in_(self, *args):
+        """The in operator works slightly differently to the others.
+        It supports subqueries (x in (select y from z)), and multiple
+        items (x in ("y", "z")).
+        Since quotation marks are important, this method assumes that
+        a single argument is a subquery, and multiple arguments are a
+        list of possible values.
+        """
+        if len(args) == 1:
+            subquery = args[0]
+        else:
+            subquery = ', '.join(map(convert_output_value, args))
         return self.__class__('{} in ({})'.format(self.value, subquery))
 
-    def not_in(self, subquery):
-        return ~self.in_(subquery)
+    def not_in(self, *args):
+        return ~self.in_(*args)
 
 
 class Query(object):

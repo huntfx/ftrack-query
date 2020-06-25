@@ -19,6 +19,7 @@ with FTrackQuery() as session:
 
     task = session.Task.where(
         entity.parent==session.Episode.first(),
+        entity.status.name.in_('Lighting', 'Rendering'),
         name='My Task',
     ).order(
         entity.type.name.desc(),
@@ -63,7 +64,9 @@ Limit the amount of results to a certain value.
 In the case of using a limit, this applies an offset to the result that is returned.
 
 ### .in_(_subquery_) | .not_in(_subquery_)
-Perform a subquery to check if an attribute matches any results.
+Perform a check to check if an attribute matches any results.
+
+This can accept a subquery such `.in_('select id from table where x is y')`, or a list of items like `.in_('x', 'y')`.
 
 ### .\_\_call\_\_(_value_)
 If an entity has a primary key, by calling the value of that primary key, the entity or `None` will be returned.
