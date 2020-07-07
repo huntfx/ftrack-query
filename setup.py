@@ -6,8 +6,8 @@ from setuptools import setup, find_packages
 with open(os.path.join(os.path.dirname(__file__), 'README.md'), 'r') as f:
     readme = f.read()
 
-# Parse ftrack_query.py for a version
-with open(os.path.join(os.path.dirname(__file__), 'ftrack_query.py'), 'r') as f:
+# Parse ftrack_query/__init__.py for a version
+with open(os.path.join(os.path.dirname(__file__), 'ftrack_query', '__init__.py'), 'r') as f:
     for line in f:
         if line.startswith('__version__'):
             version = eval(line.split('=')[1].strip())
@@ -29,7 +29,6 @@ setup(
     long_description_content_type='text/markdown',
     author = 'Peter Hunt',
     author_email='peter@huntfx.uk',
-    py_modules=['ftrack_query'],
     url = 'https://github.com/Peter92/ftrack-query',
     download_url = 'https://github.com/Peter92/ftrack-query/archive/{}.tar.gz'.format(version),
     project_urls={
