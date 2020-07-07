@@ -6,12 +6,16 @@ from ftrack_query import *
 
 class TestComparison(unittest.TestCase):
     def test_string(self):
-        self.assertEquals(entity.a.b=='c', 'a.b is "c"')
+        self.assertEquals(str(entity.a.b=='c'), 'a.b is "c"')
 
     def test_number(self):
         self.assertEquals(str(entity.a.b>1), 'a.b > 1')
         self.assertEquals(str(entity.a.b<=0), 'a.b <= 0')
         self.assertEquals(str(entity.a.b==10), 'a.b is 10')
+
+    def test_none(self):
+        self.assertEquals(str(entity.a.b==None), 'a.b is none')
+        self.assertEquals(str(entity.a.b!=None), 'a.b is_not none')
 
     def test_like(self):
         self.assertEquals(str(entity.a.b.like('% value')), 'a.b like "% value"')
@@ -41,10 +45,10 @@ class TestComparison(unittest.TestCase):
         self.assertEquals(str(entity.a.b.not_in('c', 'd', 'e')), 'not a.b in ("c", "d", "e")')
 
     def test_and(self):
-        self.assertEquals(and_(entity.a>0, b=5), 'a is "b" and b is 5')
+        self.assertEquals(str(and_(entity.a>0, b=5)), 'a > 0 and b is 5')
 
     def test_or(self):
-        self.assertEquals(or_(entity.a>0, b=5), '(a is "b" or b is 5)')
+        self.assertEquals(str(or_(entity.a>0, b=5)), '(a > 0 or b is 5)')
 
     def test_complex_and_or(self):
         self.assertEquals(str(and_(
@@ -63,17 +67,34 @@ class TestComparison(unittest.TestCase):
         )), '(not ((a is 1 or b is 2) and not (c is 3 or d is 4)) or e is 5)')
 
     def test_has(self):
-        self.assertEquals(entity.a.has(b=1, c=2), 'a has (b is 1 and c is 2)')
-        self.assertEquals(~entity.a.has(b=1, c=2), 'not a has (b is 1 and c is 2)')
+        self.assertIn(
+            str(entity.a.has(b=1, c=2)),
+            ('a has (b is 1 and c is 2)', 'a has (c is 2 and b is 1)'),
+        )
+        # TODO: Remove brackets for this case
+        self.assertIn(
+            str(~entity.a.has(b=1, c=2)),
+            ('not (a has (b is 1 and c is 2))', 'not (a has (c is 2 and b is 1))'),
+        )
 
     def test_any(self):
-        self.assertEquals(entity.a.any(b=1, c=2), 'a any (b is 1 and c is 2)')
-        self.assertEquals(~entity.a.any(b=1, c=2), 'not a any (b is 1 and c is 2)')
+        self.assertIn(
+            str(entity.a.any(b=1, c=2)),
+            ('a any (b is 1 and c is 2)', 'a any (c is 2 and b is 1)'),
+        )
+        self.assertIn(
+            str(~entity.a.any(b=1, c=2)),
+            ('not (a any (b is 1 and c is 2))', 'not (a any (c is 2 and b is 1))'),
+        )
 
     def test_sort(self):
         self.assertEquals(str(entity.a.desc()), 'a descending')
         self.assertNotEquals(str(entity.a.desc), 'a descending')
         self.assertEquals(str(entity.a.b.asc()), 'a.b ascending')
+
+    def test_call(self):
+        self.assertEquals(entity.a('value'), 'a is "value"')
+        self.assertEquals(entity.a.b(1), 'a.b is 1')
 
 
 if __name__ == '__main__':

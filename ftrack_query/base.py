@@ -107,7 +107,8 @@ class BaseComparison(object):
         return self.__class__('not ({})'.format(self.value))
 
     def __call__(self, *args, **kwargs):
-        raise TypeError("'{}' object is not callable".format(self.__class__.__name__))
+        return self.__eq__(*args, **kwargs)
+        #raise TypeError("'{}' object is not callable".format(self.__class__.__name__))
 
     def is_(self, *args, **kwargs):
         return self.__eq__(*args, **kwargs)

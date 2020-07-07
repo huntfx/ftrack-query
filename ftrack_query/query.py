@@ -30,7 +30,10 @@ class Comparison(BaseComparison):
         raised. *args and **kwargs are ignored to avoid a different
         TypeError complaining about the number of arguments.
         """
-        value, attr = self.value.rsplit('.', 1)
+        try:
+            value, attr = self.value.rsplit('.', 1)
+        except ValueError:
+            attr = self.value
         if attr == 'desc':
             return '{} descending'.format(value)
         elif attr == 'asc':
