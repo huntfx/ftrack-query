@@ -79,7 +79,32 @@ class BaseComparison(object):
     def __invert__(self):
         if self.value[:4] == 'not ':
             return self.__class__(self.value[4:])
-        return self.__class__('not '+self.value)
+
+        # Figure out if brackets need to be added
+        # If there are no connectors, then it's likely to be fine
+        if ' and ' not in self.value and ' or ' not in self.value:
+            return self.__class__('not '+self.value)
+
+        # If there are brackets, then check the depth remains above 0,
+        # otherwise ~and(or(), or()) will be wrong
+        # TODO: Optimise with regex or something
+        if self.value[0] == '(' and self.value[-1] == ')':
+            depth = 0
+            pause = False
+            for c in self.value[1:-1]:
+                if c == '(':
+                    if not pause:
+                        depth += 1
+                elif c == ')':
+                    if not pause:
+                        depth -= 1
+                elif c == '"':
+                    pause = not pause
+                if depth < 0:
+                    return self.__class__('not ({})'.format(self.value))
+            return self.__class__('not '+self.value)
+
+        return self.__class__('not ({})'.format(self.value))
 
     def __call__(self, *args, **kwargs):
         raise TypeError("'{}' object is not callable".format(self.__class__.__name__))
@@ -119,7 +144,6 @@ class BaseComparison(object):
             Search for attributes of an entity.
             This is the recommended way to query if possible.
         """
-
         for arg in args:
             # The query has not been performed, attempt to execute
             # This shouldn't really be used, so don't catch any errors
