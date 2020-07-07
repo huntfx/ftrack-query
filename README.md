@@ -75,7 +75,7 @@ Currently only `User` supports this.
 ## Comparison
 The `Comparison` object is designed to convert data to a string. It contains a wide array of operators that can be used against any data type, including other `Comparison` objects.
 
-Any comparison can be reversed with the `~` prefix.
+Any comparison can be reversed with the `~` prefix or the `not_` function.
 
 - String Comparison: `entity.attr=='value'`
 - Number comparison: `entity.attr>5`

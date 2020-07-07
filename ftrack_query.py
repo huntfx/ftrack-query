@@ -3,8 +3,8 @@ Inspiration for the syntax was taken from SQLALchemy.
 Querying and creating are supported.
 """
 
-__all__ = ['FTrackQuery', 'entity', 'and_', 'or_']
-__version__ = '1.4.3'
+__all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_']
+__version__ = '1.4.4'
 
 import logging
 import os
@@ -130,6 +130,11 @@ and_ = Criteria('and', brackets=False)
 or_ = Criteria('or', brackets=True)
 
 
+def not_(comparison):
+    """Reverse a comparison object."""
+    return ~ comparison
+
+
 class Comparison(object):
     """Deal with individual query comparisons."""
     def __init__(self, value):
@@ -148,6 +153,8 @@ class Comparison(object):
         return self.value
 
     def __invert__(self):
+        if self.value[:4] == 'not ':
+            return self.__class__(self.value[4:])
         return self.__class__('not '+self.value)
 
     def __getitem__(self, value):
@@ -555,5 +562,6 @@ class _Entity(object):
     def __getattr__(self, attr):
         """Bypass the methods of Query to just get attributes."""
         return self._query.__getattr__(attr)
+
 
 entity = _Entity()
