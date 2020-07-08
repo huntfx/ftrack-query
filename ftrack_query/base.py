@@ -51,7 +51,7 @@ def convert_output_value(value):
         return 'none'
     elif isinstance(value, (float, int)):
         return value
-    return '"{}"'.format(value)
+    return '"' + str(value).replace('"', r'\"') + '"'
 
 
 class BaseQuery(object):

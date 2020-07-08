@@ -93,8 +93,11 @@ class TestComparison(unittest.TestCase):
         self.assertEquals(str(entity.a.b.asc()), 'a.b ascending')
 
     def test_call(self):
-        self.assertEquals(entity.a('value'), 'a is "value"')
-        self.assertEquals(entity.a.b(1), 'a.b is 1')
+        self.assertEquals(str(entity.a('value')), 'a is "value"')
+        self.assertEquals(str(entity.a.b(1)), 'a.b is 1')
+
+    def test_escape(self):
+        self.assertEquals(str(entity.value.like('%"value"%')), r'value like "%\"value\"%"')
 
 
 if __name__ == '__main__':
