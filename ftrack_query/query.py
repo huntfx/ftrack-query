@@ -109,7 +109,20 @@ class Comparison(BaseComparison):
 class Query(BaseQuery):
     """Base class for constructing a query."""
     _EntityKeyCache = {}
+
+    # These keys are used where it's likely there's a unique value for each entity
     _PrimaryKeys = {
+        'Disk': 'name',
+        'Location': 'name',
+        'NoteLabel': 'name',
+        'Priority': 'name',
+        'Project': 'name',
+        'ProjectSchema': 'name',
+        'SecurityRole': 'name',
+        'Setting': 'name',
+        'State': 'name',
+        'Status': 'name',
+        'Type': 'name',
         'User': 'username',
     }
 
