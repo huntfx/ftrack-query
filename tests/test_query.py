@@ -36,6 +36,7 @@ class TestComparison(unittest.TestCase):
     def test_in(self):
         self.assertEquals(str(entity.a.b.in_('select id from User')), 'a.b in (select id from User)')
         self.assertEquals(str(entity.a.b.in_('c', 'd', 'e')), 'a.b in ("c", "d", "e")')
+        self.assertEquals(str(entity.a.b.in_('c')), 'a.b in ("c")')
         # TODO: Check if ints work with the API
 
     def test_not(self):
@@ -98,6 +99,29 @@ class TestComparison(unittest.TestCase):
 
     def test_escape(self):
         self.assertEquals(str(entity.value.like('%"value"%')), r'value like "%\"value\"%"')
+
+
+class TestSessionComparison(unittest.TestCase):
+    def setUp(self):
+        self.session = FTrackQuery()
+
+    def tearDown(self):
+        self.session.close()
+
+    def test_id_remap(self):
+        schema = self.session.ProjectSchema.first()
+        self.assertEquals(
+            str(self.session.Project.where(project_schema=schema)),
+            'Project where project_schema.id is "{}"'.format(schema['id'])
+        )
+
+    def test_id_remap_in(self):
+        schema = self.session.ProjectSchema.first()
+        self.assertEquals(
+            str(self.session.Project.where(entity.project_schema.in_(schema))),
+            'Project where project_schema.id in ("{}")'.format(schema['id'])
+        )
+
 
 
 if __name__ == '__main__':

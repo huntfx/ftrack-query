@@ -92,11 +92,17 @@ class Comparison(BaseComparison):
         """The in operator works slightly differently to the others.
         It supports subqueries (x in (select y from z)), and multiple
         items (x in ("y", "z")).
-        Since quotation marks are important, this method assumes that
-        a single argument is a subquery, and multiple arguments are a
-        list of possible values.
+        Since quotation marks are important, an attempt is made to
+        guess if the input is a subquery or a list of possible values.
         """
-        if len(args) == 1:
+        # Args were given as entities
+        if isinstance(args[0], ftrack_api.entity.base.Entity):
+            return self.__class__('{}.id in ({})'.format(
+                self.value, ', '.join(convert_output_value(entity['id']) for entity in args)
+            ))
+
+        # Args were given as a list of strings
+        if len(args) == 1 and args[0].startswith('select ') and ' from ' in args[0]:
             subquery = args[0]
         else:
             subquery = ', '.join(map(convert_output_value, args))
