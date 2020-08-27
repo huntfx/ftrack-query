@@ -13,10 +13,11 @@ Recommended Usage:
         session.event_hub.wait()
 """
 
-from .base import *
+from .base import *  # pylint: disable=unused-wildcard-import
 
 
 class Comparison(BaseComparison):
+    # pylint: disable=unexpected-special-method-signature
     @parse_operators
     def __eq__(self, value, base):
         return self.__class__('{}={}'.format(base, value))

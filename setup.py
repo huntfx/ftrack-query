@@ -36,7 +36,7 @@ setup(
         'Source': 'https://github.com/Peter92/ftrack-query',
         'Issues': 'https://github.com/Peter92/ftrack-query/issues',
     },
-    keywords = ['ftrack', 'api', 'query'],
+    keywords = ['ftrack', 'api', 'query', 'event'],
     install_requires=requirements,
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -47,6 +47,11 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
-    python_requires=('>=2.7.9, <3.0')
+    python_requires=('>=2.7.9, <4.0')
 )

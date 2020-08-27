@@ -1,7 +1,7 @@
 # ftrack-query
 FTrack Query is an object-orientated wrapper over the FTrack API. While the default query syntax is powerful, it is entirely text based so dynamic queries can be difficult to construct. This module supports **and**/**or** operators with nested comparisons.
 
-It is recommended to first read http://ftrack-python-api.rtd.ftrack.com/en/1.7.0/tutorial.html for a basic understanding of how the FTrack API works.
+It is recommended to first read https://ftrack-python-api.readthedocs.io/en/stable/tutorial.html for a basic understanding of how the FTrack API works.
 
 ## Installation
     pip install ftrack_query

@@ -1,19 +1,17 @@
 """Python wrapper over the SQL based FTrack syntax.
-Inspiration for the syntax was taken from SQLALchemy.
-Querying and creating are supported.
+Supports the querying and creation of objects.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_']
 
 
-from functools import wraps
-
 import ftrack_api
 
-from .base import *
+from .base import *  # pylint: disable=unused-wildcard-import
 
 
 class Comparison(BaseComparison):
+    # pylint: disable=unexpected-special-method-signature
     def __getitem__(self, value):
         """Cast a relation to a concrete type.
         One example would be TypedContext.parent(Project), where it
@@ -209,6 +207,7 @@ class Query(BaseQuery):
         return Query(session, entity)
 
     def copy(self):
+        # pylint: disable=protected-access
         """Create a new copy of the class."""
         cls = Query.new(session=self._session, entity=self._entity)
         cls._entity = self._entity
@@ -283,17 +282,17 @@ class Query(BaseQuery):
     @clone_instance
     def sort(self, attribute=None):
         """Sort the query results."""
-        asc = desc = False
+        desc = False
 
         # Grab the sorting method from the string if provided
         if attribute is not None:
             attribute = str(attribute)
             if ' ' in attribute:
                 attribute, method = attribute.split(' ')
-                if method == 'ascending':
-                    asc = True
-                elif method == 'descending':
+                if method == 'descending':
                     desc = True
+                elif method != 'ascending':
+                    raise NotImplementedError('unknown sorting method: {!r}'.format(method))
 
         if attribute is None:
             self._sort = []
@@ -327,7 +326,9 @@ class Query(BaseQuery):
 
 
 class FTrackQuery(ftrack_api.Session):
+    # pylint: disable=arguments-differ
     """Expansion of the ftrack_api.Session class."""
+
     exc = ftrack_api.exception
     symbol = ftrack_api.symbol
     Entity = ftrack_api.entity.base.Entity
