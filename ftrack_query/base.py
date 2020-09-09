@@ -78,7 +78,7 @@ class BaseComparison(object):
         return self.__class__(self.value+'.'+attr)
 
     def __repr__(self):
-        return '{}({}!r)>'.format(self.__class__.__name__, self.value)
+        return '{}({!r})>'.format(self.__class__.__name__, self.value)
 
     def __str__(self):
         return self.value
