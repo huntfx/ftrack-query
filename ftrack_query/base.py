@@ -34,7 +34,7 @@ def dict_to_str(dct):
             if isinstance(v, ftrack_api.entity.base.Entity):
                 v = str(v)
             else:
-                v = v.__repr__()
+                v = repr(v)
             yield '{}={}'.format(k, v)
     return ', '.join(convert(dct))
 

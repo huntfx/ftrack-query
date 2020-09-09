@@ -11,12 +11,14 @@ It is recommended to first read https://ftrack-python-api.readthedocs.io/en/stab
 from ftrack_query import FTrackQuery, entity
 
 with FTrackQuery() as session:
+    # Create
     note = session.Note.create(
         content='My new note',
         author=session.User('peter'),
         category=session.NoteLabel.where(entity.color!=None, name='Internal').one(),
     )
 
+    # Query
     task = session.Task.where(
         entity.parent==session.Episode.first(),
         entity.status.name.in_('Lighting', 'Rendering'),
@@ -27,6 +29,16 @@ with FTrackQuery() as session:
 
     task['notes'].append(note)
     session.commit()
+
+    # Events
+    session.event_hub.subscribe(str(
+        event.and_(
+            event.topic('ftrack.update'),
+            event.data.user.name!=getuser(),
+        )
+    ))
+    session.event_hub.wait()
+
 ```
 
 # Reference
