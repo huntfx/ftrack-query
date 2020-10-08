@@ -196,6 +196,7 @@ class Join(object):
 
     def __call__(self, *args, **kwargs):
         """Create a comparison object containing all the inputs."""
+        args = (arg for arg in args if arg is not None)
         query_parts = list(self.comparison.parser(*args, **kwargs))
         query = ' {} '.format(self.operator).join(map(str, query_parts))
         if self.brackets and len(query_parts) > 1:
