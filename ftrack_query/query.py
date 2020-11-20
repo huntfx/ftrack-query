@@ -1,17 +1,14 @@
-"""Python wrapper over the SQL based FTrack syntax.
-Supports the querying and creation of objects.
-"""
-
-__all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_']
+__all__ = ['entity', 'and_', 'or_', 'not_']
 
 import ftrack_api
 
-from .base import *  # pylint: disable=unused-wildcard-import
+from .abstract import AbstractComparison, AbstractQuery
+from .utils import Join, clone_instance, convert_output_value, not_, parse_operators
 
 
-class Comparison(BaseComparison):
+class Comparison(AbstractComparison):
     # pylint: disable=unexpected-special-method-signature
-    """Generate comparison syntax for the query language."""
+    """Comparisons for the query syntax."""
 
     def __getitem__(self, value):
         """Cast a relation to a concrete type.
@@ -48,58 +45,75 @@ class Comparison(BaseComparison):
 
     @parse_operators
     def __eq__(self, value, base):
+        """If a value is exactly equal."""
         return self.__class__('{} is {}'.format(base, value))
 
     @parse_operators
     def __ne__(self, value, base):
+        """If a value is not exactly equal."""
         return self.__class__('{} is_not {}'.format(base, value))
 
     @parse_operators
     def __gt__(self, value, base):
+        """If a value is greater than."""
         return self.__class__('{} > {}'.format(base, value))
 
     @parse_operators
     def __ge__(self, value, base):
+        """If a value is greater than or equal."""
         return self.__class__('{} >= {}'.format(base, value))
 
     @parse_operators
     def __lt__(self, value, base):
+        """If a value is less than."""
         return self.__class__('{} < {}'.format(base, value))
 
     @parse_operators
     def __le__(self, value, base):
+        """If a value is less than or equal."""
         return self.__class__('{} <= {}'.format(base, value))
 
     @parse_operators
     def like(self, value, base):
+        """If a value matches a pattern.
+        The percent symbol (%) is used as a wildcard.
+        """
         return self.__class__('{} like {}'.format(base, value))
 
     @parse_operators
     def not_like(self, value, base):
+        """If a value does not match a pattern.
+        The percent symbol (%) sign is used as a wildcard.
+        """
         return self.__class__('{} not_like {}'.format(base, value))
 
     @parse_operators
     def after(self, value, base):
+        """If a date is after."""
         return self.__class__('{} after {}'.format(base, value))
 
     @parse_operators
     def before(self, value, base):
+        """If a date is before."""
         return self.__class__('{} before {}'.format(base, value))
 
     def has(self, *args, **kwargs):
+        """Test a scalar relationship for values."""
         where = Comparison.parser(*args, **kwargs)
         return self.__class__('{} has ({})'.format(self.value, and_(*where)))
 
     def any(self, *args, **kwargs):
+        """Test a collection relationship for values."""
         where = Comparison.parser(*args, **kwargs)
         return self.__class__('{} any ({})'.format(self.value, and_(*where)))
 
     def in_(self, *args):
-        """The in operator works slightly differently to the others.
-        It supports subqueries (x in (select y from z)), and multiple
-        items (x in ("y", "z")).
-        Since quotation marks are important, an attempt is made to
-        guess if the input is a subquery or a list of possible values.
+        """One of these values.
+        This supports both subqueries (x in (select y from z)), and
+        multiple items (x in ("y", "z")).
+        Since quotation marks are important in the final query, an
+        attempt is made to guess if the input is a subquery or a list
+        of possible values.
         """
         # Args were given as entities
         if isinstance(args[0], ftrack_api.entity.base.Entity):
@@ -115,10 +129,13 @@ class Comparison(BaseComparison):
         return self.__class__('{} in ({})'.format(self.value, subquery))
 
     def not_in(self, *args):
+        """Not one of these values.
+        See in_() for implementation details.
+        """
         return self.in_(*args).__invert__()
 
 
-class Query(BaseQuery):
+class Query(AbstractQuery):
     """Base class for constructing a query."""
     _EntityKeyCache = {}
 
@@ -331,84 +348,6 @@ class Query(BaseQuery):
         self._sort = [(attr, not order) for attr, order in self._sort]
         return self
     reverse = __reversed__
-
-
-class FTrackQuery(ftrack_api.Session):
-    # pylint: disable=arguments-differ
-    """Expansion of the ftrack_api.Session class."""
-
-    exc = ftrack_api.exception
-    symbol = ftrack_api.symbol
-    Entity = ftrack_api.entity.base.Entity
-
-    def __init__(self, **kwargs):
-        """Attempt to initialise the connection.
-        If the debug argument is set, the connection will be ignored.
-        """
-        self.debug = kwargs.pop('debug', False)
-        self._logger = kwargs.pop('logger', logger)
-        self._logger.debug('Connecting...')
-        if not self.debug:
-            super(FTrackQuery, self).__init__(**kwargs)
-        self._logger.debug('New session initialised.')
-
-    def __getattribute__(self, attr):
-        """Get an entity type if it exists.
-        The standard AttributeError will be raised if not.
-        """
-        try:
-            return super(FTrackQuery, self).__getattribute__(attr)
-        except AttributeError:
-            if self.debug or attr in super(FTrackQuery, self).__getattribute__('types'):
-                return Query.new(self, attr)
-            raise
-
-    def close(self, *args, **kwargs):
-        """Avoid error when closing session in debug mode."""
-        if not self.debug:
-            return super(FTrackQuery, self).close(*args, **kwargs)
-
-    def get(self, value, _value=None, *args, **kwargs):
-        """Get any entity from its ID.
-        The _value argument is for compatibility with ftrack_api.Session.
-        """
-        if _value is None:
-            entity = 'Context'
-        else:
-            entity, value = value, _value
-        self._logger.debug('Get: {}({})'.format(entity, value.__repr__()))
-        return super(FTrackQuery, self).get(entity, value, *args, **kwargs)
-
-    def query(self, query, *args, **kwargs):
-        """Create an FTrack query object from a string."""
-        query = str(query)
-        self._logger.debug('Query: '+query)
-        return super(FTrackQuery, self).query(query, *args, **kwargs)
-
-    def create(self, entity, data, *args, **kwargs):
-        """Create a new entity."""
-        if not kwargs.get('reconstructing', False):
-            self._logger.debug('Create: {}({})'.format(entity, dict_to_str(data)))
-        return super(FTrackQuery, self).create(entity, data, *args, **kwargs)
-
-    def delete(self, entity, *args, **kwargs):
-        """Delete an FTrack entity."""
-        self._logger.debug('Delete: '+entity.__repr__())
-        return super(FTrackQuery, self).delete(entity, *args, **kwargs)
-
-    def where(self, *args, **kwargs):
-        """Set entity type as TypedContext if none provided."""
-        return self.TypedContext.where(*args, **kwargs)
-
-    def commit(self, *args, **kwargs):
-        """Commit changes."""
-        self._logger.debug('Changes saved.')
-        return super(FTrackQuery, self).commit(*args, **kwargs)
-
-    def rollback(self, *args, **kwargs):
-        """Rollback changes."""
-        self._logger.debug('Changes discarded.')
-        return super(FTrackQuery, self).rollback(*args, **kwargs)
 
 
 class Entity(object):

@@ -1,54 +1,66 @@
-"""Python wrapper over the FTrack event syntax.
-It's different to the standard query syntax, so it's been split into a
-separate file.
-
-Example:
-    >>> session.event_hub.subscribe(str(
-    ...     event.and_(
-    ...         event.topic('ftrack.update'),
-    ...         event.data.user.name!=getuser(),
-    ...     )
-    ... ))
-    >>> session.event_hub.wait()
-"""
-
 __all__ = ['event', 'and_', 'or_', 'not_']
 
-from .base import *  # pylint: disable=unused-wildcard-import
+from .abstract import AbstractComparison
+from .utils import Join, parse_operators, not_
 
 
-class Comparison(BaseComparison):
+class Comparison(AbstractComparison):
     # pylint: disable=unexpected-special-method-signature
-    """Generate comparison syntax for the event language."""
+    """Comparisons for the event syntax."""
 
     @parse_operators
     def __eq__(self, value, base):
+        """If a value is exactly equal."""
         return self.__class__('{}={}'.format(base, value))
 
     @parse_operators
     def __ne__(self, value, base):
+        """If a value is not exactly equal."""
         return self.__class__('{}!={}'.format(base, value))
 
     @parse_operators
     def __gt__(self, value, base):
+        """If a value is greater than."""
         return self.__class__('{}>{}'.format(base, value))
 
     @parse_operators
     def __ge__(self, value, base):
+        """If a value is greater than or equal."""
         return self.__class__('{}>={}'.format(base, value))
 
     @parse_operators
     def __lt__(self, value, base):
+        """If a value is less than."""
         return self.__class__('{}<{}'.format(base, value))
 
     @parse_operators
     def __le__(self, value, base):
+        """If a value is less than or equal."""
         return self.__class__('{}<={}'.format(base, value))
 
 
 class Event(object):
     """Create a class to mimic event.py.
-    This allows for both __getattr__ and imports.
+
+    The purpose of this is to allow both both imports and getattr.
+
+    # Importing from module
+    >>> from ftrack_query.event import *
+    >>> and_(event.a=='b', event.x=='y')
+
+    # Importing module directly
+    >>> from ftrack_query import event
+    >>> event.and_(event.a=='b', event.x=='y')
+
+    Example:
+        >>> event = Event()
+        >>> session.event_hub.subscribe(str(
+        ...     event.and_(
+        ...         event.topic('ftrack.update'),
+        ...         event.data.user.name!=getuser(),
+        ...     )
+        ... ))
+        >>> session.event_hub.wait()
     """
 
     @staticmethod
@@ -66,7 +78,8 @@ class Event(object):
         """Quick access to the not_ function."""
         return not_(*args, **kwargs)
 
-    def __getattr__(self, attr):
+    @staticmethod
+    def __getattr__(attr):
         """Get an event attribute to use for comparisons.
         Example: event.<attr>
         """

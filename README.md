@@ -8,7 +8,7 @@ It is recommended to first read https://ftrack-python-api.readthedocs.io/en/stab
 
 ## Example
 ```python
-from ftrack_query import FTrackQuery, entity
+from ftrack_query import FTrackQuery, entity, or_
 
 with FTrackQuery() as session:
     # Create
@@ -20,8 +20,11 @@ with FTrackQuery() as session:
 
     # Query
     task = session.Task.where(
-        entity.parent==session.Episode.first(),
         entity.status.name.in_('Lighting', 'Rendering'),
+        or_(
+            entity.parent==session.Episode.first(),
+            entity.parent==None,
+        ),
         name='My Task',
     ).order(
         entity.type.name.desc(),
