@@ -1,6 +1,10 @@
-import arrow
+import os
 import unittest
+import sys
 
+import arrow
+
+sys.path.append(os.path.normpath(os.path.dirname(__file__)).rsplit(os.path.sep, 1)[0])
 from ftrack_query import *
 
 
