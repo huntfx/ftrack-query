@@ -2,7 +2,7 @@
 Inspiration for the syntax was taken from SQLALchemy.
 """
 
-__version__ = '1.5.1'
+__version__ = '1.5.2'
 
 from .query import *
 from .event import event

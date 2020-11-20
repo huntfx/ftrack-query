@@ -27,15 +27,22 @@ class Comparison(BaseComparison):
         If no override exists, then the standard TypeError will be
         raised. *args and **kwargs are ignored to avoid a different
         TypeError complaining about the number of arguments.
+
+        Example:
+            >>> entity.name.desc
+            'name.desc'
+            >>> entity.name.desc()
+            'name descending'
         """
         try:
             value, attr = self.value.rsplit('.', 1)
         except ValueError:
-            attr = self.value
-        if attr == 'desc':
-            return '{} descending'.format(value)
-        elif attr == 'asc':
-            return '{} ascending'.format(value)
+            pass
+        else:
+            if attr in ('desc', 'descending'):
+                return '{} descending'.format(value)
+            elif attr in ('asc', 'ascending'):
+                return '{} ascending'.format(value)
         return super(Comparison, self).__call__(*args, **kwargs)
 
     @parse_operators
