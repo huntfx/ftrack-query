@@ -1,10 +1,5 @@
 """Core functions to reuse."""
 
-__all__ = [
-    'logger', 'not_', 'clone_instance', 'dict_to_str', 'parse_operators',
-    'convert_output_value', 'BaseQuery', 'BaseComparison', 'Join',
-]
-
 import logging
 from functools import wraps
 
@@ -114,13 +109,21 @@ class BaseComparison(object):
         return self.__class__('not ({})'.format(self.value))
 
     def __call__(self, *args, **kwargs):
+        """Setup calls as aliases to equals.
+        >>> entity.value('x') == (entity.value == 'x')
+
+        The old error has been left commented out in case it needs to
+        be re-added for certain cases in the future.
+        """
         return self.__eq__(*args, **kwargs)
-        #raise TypeError("'{}' object is not callable".format(self.__class__.__name__))
+        # raise TypeError("'{}' object is not callable".format(self.__class__.__name__))
 
     def is_(self, *args, **kwargs):
+        """Setup .is() as an alias to equals."""
         return self.__eq__(*args, **kwargs)
 
     def is_not(self, *args, **kwargs):
+        """Setup .is_not() as an alias to not equals."""
         return self.__ne__(*args, **kwargs)
 
     @classmethod

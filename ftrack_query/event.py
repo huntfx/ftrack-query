@@ -2,22 +2,25 @@
 It's different to the standard query syntax, so it's been split into a
 separate file.
 
-Recommended Usage:
-    with FTrackAPI() as session:
-        session.event_hub.subscribe(
-            str(event.and_(
-                event.topic('ftrack.update'),
-                event.data.user.name!=getuser(),
-            ))
-        )
-        session.event_hub.wait()
+Example:
+    >>> session.event_hub.subscribe(str(
+    ...     event.and_(
+    ...         event.topic('ftrack.update'),
+    ...         event.data.user.name!=getuser(),
+    ...     )
+    ... ))
+    >>> session.event_hub.wait()
 """
+
+__all__ = ['event', 'and_', 'or_', 'not_']
 
 from .base import *  # pylint: disable=unused-wildcard-import
 
 
 class Comparison(BaseComparison):
     # pylint: disable=unexpected-special-method-signature
+    """Generate comparison syntax for the event language."""
+
     @parse_operators
     def __eq__(self, value, base):
         return self.__class__('{}={}'.format(base, value))
@@ -44,7 +47,7 @@ class Comparison(BaseComparison):
 
 
 class Event(object):
-    """Create a class to mimic the module.
+    """Create a class to mimic event.py.
     This allows for both __getattr__ and imports.
     """
 

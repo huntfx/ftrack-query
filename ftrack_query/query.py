@@ -4,7 +4,6 @@ Supports the querying and creation of objects.
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_']
 
-
 import ftrack_api
 
 from .base import *  # pylint: disable=unused-wildcard-import
@@ -12,9 +11,11 @@ from .base import *  # pylint: disable=unused-wildcard-import
 
 class Comparison(BaseComparison):
     # pylint: disable=unexpected-special-method-signature
+    """Generate comparison syntax for the query language."""
+
     def __getitem__(self, value):
         """Cast a relation to a concrete type.
-        One example would be TypedContext.parent(Project), where it
+        One example would be TypedContext.parent[Project], where it
         will limit the TypedContext search to the direct children of
         projects.
         """
