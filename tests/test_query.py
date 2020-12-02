@@ -101,8 +101,16 @@ class TestComparison(unittest.TestCase):
         self.assertEqual(str(entity.a('value')), 'a is "value"')
         self.assertEqual(str(entity.a.b(1)), 'a.b is 1')
 
-    def test_escape(self):
+    def test_str_functions(self):
+        self.assertEqual(str(entity.value.startswith('value')), 'value like "value%"')
+        self.assertEqual(str(entity.value.endswith('value')), 'value like "%value"')
+
+    def test_quotation_escape(self):
         self.assertEqual(str(entity.value.like('%"value"%')), r'value like "%\"value\"%"')
+
+    def test_percent_escape(self):
+        self.assertEqual(str(entity.value.startswith('a%b')), r'value like "a\%b%"')
+        self.assertEqual(str(entity.value.like('a%b')), r'value like "a%b"')
 
 
 class TestSessionComparison(unittest.TestCase):

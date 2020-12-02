@@ -134,6 +134,14 @@ class Comparison(AbstractComparison):
         """
         return self.in_(*args).__invert__()
 
+    def startswith(self, value):
+        """If a value starts with this."""
+        return self.like(value.replace('%', '\\%') + '%')
+
+    def endswith(self, value):
+        """If a value ends with this."""
+        return self.like('%' + value.replace('%', '\\%'))
+
 
 class Query(AbstractQuery):
     """Base class for constructing a query."""
