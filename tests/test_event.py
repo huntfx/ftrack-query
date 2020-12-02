@@ -15,10 +15,10 @@ class TestComparison(unittest.TestCase):
         self.assertTrue(event.a.b==2, 'a.b=2')
 
     def test_and(self):
-        self.assertEquals(str(and_(event.a>0, b=5)), 'a>0 and b is 5')
+        self.assertEqual(str(and_(event.a>0, b=5)), 'a>0 and b is 5')
 
     def test_or(self):
-        self.assertEquals(str(or_(event.a>0, b=5)), '(a>0 or b is 5)')
+        self.assertEqual(str(or_(event.a>0, b=5)), '(a>0 or b is 5)')
 
 
 if __name__ == '__main__':
