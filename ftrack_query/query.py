@@ -148,20 +148,25 @@ class Query(AbstractQuery):
     _EntityKeyCache = {}
 
     # These keys are used where it's likely there's a unique value for each entity
-    _PrimaryKeys = {
-        'Disk': 'name',
-        'Location': 'name',
-        'NoteLabel': 'name',
-        'Priority': 'name',
-        'Project': 'name',
-        'ProjectSchema': 'name',
-        'SecurityRole': 'name',
-        'Setting': 'name',
-        'State': 'name',
-        'Status': 'name',
-        'Type': 'name',
-        'User': 'username',
-    }
+    _PrimaryKeys = dict(
+        AssetType='name',
+        Disk='name',
+        ListCategory='name',
+        Location='name',
+        ManagerType='name',
+        NoteLabel='name',
+        ObjectType='name',
+        Priority='name',
+        Project='name',
+        ProjectSchema='name',
+        SecurityRole='name',
+        Scope='name',
+        Setting='name',
+        State='name',
+        Status='name',
+        Type='name',
+        User='username',
+    )
 
     def __init__(self, session, entity):
         self._session = session
