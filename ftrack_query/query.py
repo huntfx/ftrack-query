@@ -44,6 +44,13 @@ class Comparison(AbstractComparison):
         return super(Comparison, self).__call__(*args, **kwargs)
 
     @parse_operators
+    def __contains__(self, value, base):
+        """Provide an alternative suggestion when using `x in obj`."""
+        raise TypeError("'in' cannot be overloaded, use {!r} instead".format(
+            str(self.__class__('{} like {}'.format(base, value))),
+        ))
+
+    @parse_operators
     def __eq__(self, value, base):
         """If a value is exactly equal."""
         return self.__class__('{} is {}'.format(base, value))

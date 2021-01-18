@@ -75,6 +75,10 @@ class AbstractComparison(object):
         return self.__eq__(*args, **kwargs)
         # raise TypeError("'{}' object is not callable".format(self.__class__.__name__))
 
+    def __contains__(self, value):
+        """Disable the use of `x in obj`, since it can only return a boolean."""
+        raise TypeError("'in' cannot be overloaded")
+
     def is_(self, *args, **kwargs):
         """Setup .is() as an alias to equals."""
         return self.__eq__(*args, **kwargs)

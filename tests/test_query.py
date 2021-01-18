@@ -112,6 +112,10 @@ class TestComparison(unittest.TestCase):
         self.assertEqual(str(entity.value.startswith('a%b')), r'value like "a\%b%"')
         self.assertEqual(str(entity.value.like('a%b')), r'value like "a%b"')
 
+    def test_contains_error(self):
+        with self.assertRaises(TypeError):
+            'a' in event.a
+
 
 class TestSessionComparison(unittest.TestCase):
     def setUp(self):
