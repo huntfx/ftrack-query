@@ -122,6 +122,9 @@ class Comparison(AbstractComparison):
         attempt is made to guess if the input is a subquery or a list
         of possible values.
         """
+        if not args:
+            return self.__class__('{} in ()'.format(self.value))
+
         # Args were given as entities
         if isinstance(args[0], ftrack_api.entity.base.Entity):
             return self.__class__('{}.id in ({})'.format(
