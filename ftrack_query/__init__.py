@@ -8,7 +8,7 @@ orientated approach. Inspiration was taken from SQLALchemy.
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event']
 
-__version__ = '1.6.1'
+__version__ = '1.6.2'
 
 import ftrack_api
 
@@ -20,10 +20,6 @@ from .utils import logger, dict_to_str
 class FTrackQuery(ftrack_api.Session):
     # pylint: disable=arguments-differ
     """Expansion of the ftrack_api.Session class."""
-
-    exc = ftrack_api.exception
-    symbol = ftrack_api.symbol
-    Entity = ftrack_api.entity.base.Entity
 
     def __init__(self, **kwargs):
         """Attempt to initialise the connection.
