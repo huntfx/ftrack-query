@@ -229,12 +229,22 @@ class Query(AbstractQuery):
         In rare cases, it can be valid to pass in a single argument,
         such as User('username'). The inspiration for this was taken
         from the old API.
+        As the FTrack database is case insensitive, in the case of
+        multiple results, use Python to find the exact match.
         """
         if self._entity in self._PrimaryKeys and len(args) == 1 and not kwargs:
+            key = self._PrimaryKeys[self._entity]
+            value = args[0]
             try:
-                return self.where(**{self._PrimaryKeys[self._entity]: args[0]}).one()
+                return self.where(**{key: value}).one()
             except ftrack_api.exception.NoResultFoundError:
                 return None
+            except ftrack_api.exception.MultipleResultsFoundError:
+                for result in self.where(**{key: value}):
+                    if result[key] == value:
+                        return result
+                raise
+
 
         raise TypeError("'Query' object is not callable, "
                         "perhaps you meant to use 'Query.where()'?")
