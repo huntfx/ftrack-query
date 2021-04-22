@@ -8,7 +8,7 @@ orientated approach. Inspiration was taken from SQLALchemy.
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event']
 
-__version__ = '1.6.3'
+__version__ = '1.6.4'
 
 import ftrack_api
 
@@ -89,3 +89,9 @@ class FTrackQuery(ftrack_api.Session):
         """Rollback changes."""
         self._logger.debug('Changes discarded.')
         return super(FTrackQuery, self).rollback(*args, **kwargs)
+
+    def populate(self, entities, projections):
+        """Populate new values."""
+        if isinstance(projections, (list, tuple, set)):
+            projections = ','.join(map(str, projections))
+        return super(FTrackQuery, self).populate(entities, projections)
