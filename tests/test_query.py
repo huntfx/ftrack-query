@@ -4,7 +4,7 @@ import sys
 
 import arrow
 
-sys.path.append(os.path.normpath(os.path.dirname(__file__)).rsplit(os.path.sep, 1)[0])
+sys.path.insert(0, os.path.normpath(os.path.dirname(__file__)).rsplit(os.path.sep, 1)[0])
 from ftrack_query import *
 
 
