@@ -124,6 +124,15 @@ class Comparison(AbstractComparison):
         """
         if not args:
             return self.__class__('{} in ()'.format(self.value))
+        single_arg = len(args) == 1
+
+        # Args were given as a built query
+        # If a single query, assume .all() is required
+        # If multiple queries, assume .one() is required on each
+        if single_arg and isinstance(args[0], AbstractQuery):
+            args = args[0].all()
+        elif isinstance(args[0], AbstractQuery):
+            args = [query.one() for query in args]
 
         # Args were given as entities
         if isinstance(args[0], ftrack_api.entity.base.Entity):
@@ -132,7 +141,7 @@ class Comparison(AbstractComparison):
             ))
 
         # Args were given as a list of strings
-        if len(args) == 1 and args[0].startswith('select ') and ' from ' in args[0]:
+        if single_arg and args[0].startswith('select ') and ' from ' in args[0]:
             subquery = args[0]
         else:
             subquery = ', '.join(map(convert_output_value, args))

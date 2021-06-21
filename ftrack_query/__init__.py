@@ -8,7 +8,7 @@ orientated approach. Inspiration was taken from SQLALchemy.
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event']
 
-__version__ = '1.6.4'
+__version__ = '1.6.5'
 
 import ftrack_api
 

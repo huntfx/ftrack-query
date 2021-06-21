@@ -3,6 +3,8 @@ from functools import wraps
 
 import ftrack_api
 
+from .abstract import AbstractQuery
+
 
 logger = logging.getLogger('ftrack-query')
 
@@ -36,9 +38,14 @@ def parse_operators(func):
     """Parse the value when an operator is used."""
     @wraps(func)
     def wrapper(self, value):
-        # If an entity is passed in, use the ID
+        # If the item is constructed query, assume it's a single object
+        if isinstance(value, AbstractQuery):
+            value = value.one()
+
+        # If the item is an FTrack entity, use the ID
         if isinstance(value, ftrack_api.entity.base.Entity):
             return func(self, convert_output_value(value['id']), base=self.value+'.id')
+
         return func(self, convert_output_value(value), base=self.value)
     return wrapper
 
