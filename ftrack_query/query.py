@@ -228,6 +228,10 @@ class Query(AbstractQuery):
         """
         return Comparison(attr)
 
+    def __bool__(self):
+        return self._entity is not None
+    __nonzero__ = __bool__
+
     def __str__(self):
         """Evaluate the query data and convert to a string."""
         query = []
