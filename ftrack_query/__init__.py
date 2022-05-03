@@ -6,14 +6,17 @@ It's designed to hide the SQL-like syntax in favour of an object
 orientated approach. Inspiration was taken from SQLALchemy.
 """
 
-__all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event']
+__all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event',
+           'select', 'create', 'update', 'delete']
 
-__version__ = '1.6.5'
+__version__ = '1.7.0'
 
 import ftrack_api
 
+from . import statement
 from .query import Query, entity, and_, or_, not_
 from .event import event
+from .statement import select, create, update, delete
 from .utils import logger, dict_to_str
 
 
@@ -40,7 +43,7 @@ class FTrackQuery(ftrack_api.Session):
             return super(FTrackQuery, self).__getattribute__(attr)
         except AttributeError:
             if self.debug or attr in super(FTrackQuery, self).__getattribute__('types'):
-                return Query.new(self, attr)
+                return Query(self, attr)
             raise
 
     def close(self, *args, **kwargs):
@@ -95,3 +98,9 @@ class FTrackQuery(ftrack_api.Session):
         if isinstance(projections, (list, tuple, set)):
             projections = ','.join(map(str, projections))
         return super(FTrackQuery, self).populate(entities, projections)
+
+    def execute(self, stmt):
+        """Execute a statement."""
+        if isinstance(stmt, statement.Statement):
+            return stmt.execute(self)
+        raise NotImplementedError(type(stmt))

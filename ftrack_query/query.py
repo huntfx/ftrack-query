@@ -268,22 +268,17 @@ class Query(AbstractQuery):
         self._where = [or_(and_(*self._where), and_(*entity._where))]
         return self
 
-    @classmethod
-    def new(cls, session, entity):
-        """Create a new Query object."""
-        return Query(session, entity)
-
     def copy(self):
         # pylint: disable=protected-access
         """Create a new copy of the class."""
-        cls = Query.new(session=self._session, entity=self._entity)
-        cls._entity = self._entity
-        cls._where = list(self._where)
-        cls._populate = list(self._populate)
-        cls._sort = list(self._sort)
-        cls._offset = self._offset
-        cls._limit = self._limit
-        return cls
+        new = type(self)(session=self._session, entity=self._entity)
+        new._entity = self._entity
+        new._where = list(self._where)
+        new._populate = list(self._populate)
+        new._sort = list(self._sort)
+        new._offset = self._offset
+        new._limit = self._limit
+        return new
 
     def get(self, value, _value=None):
         """Get an entity from the ID.
@@ -401,7 +396,7 @@ class Entity(object):
     """
 
     def __init__(self):
-        self._query = Query.new(None, None)
+        self._query = Query(None, None)
 
     def __getattr__(self, attr):
         """Bypass the methods of Query to just get attributes."""
