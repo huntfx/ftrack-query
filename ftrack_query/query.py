@@ -1,3 +1,22 @@
+# pylint: disable=consider-using-f-string
+"""Base query syntax.
+The classes in this file allow construction of a string to pass to the
+`ftrack_api.Session.query` method.
+
+Example:
+    >>> query = (
+    ...     session.Shot
+    ...     .where(
+    ...         ~entity.children.any(entity.name.like('%Animation%')),
+    ...         name='Shot 1',
+    ...     )
+    ...     .order_by(entity.created_at.desc())
+    ...     .limit(5)
+    ... )
+    >>> len(query.all())
+    5
+"""
+
 __all__ = ['entity', 'and_', 'or_', 'not_']
 
 import ftrack_api
@@ -155,11 +174,11 @@ class Comparison(AbstractComparison):
 
     def startswith(self, value):
         """If a value starts with this."""
-        return self.like(value.replace('%', '\\%') + '%')
+        return self.like(value.replace('%', '\\%') + '%')  # pylint: disable=no-value-for-parameter
 
     def endswith(self, value):
         """If a value ends with this."""
-        return self.like('%' + value.replace('%', '\\%'))
+        return self.like('%' + value.replace('%', '\\%'))  # pylint: disable=no-value-for-parameter
 
 
 class Query(AbstractQuery):

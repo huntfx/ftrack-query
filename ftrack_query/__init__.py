@@ -1,3 +1,4 @@
+# pylint: disable=consider-using-f-string
 """Wrapper over the FTrack API to make it more pythonic to use.
 Supports the querying and creation of objects, and a way to build
 event listeners.
@@ -13,11 +14,10 @@ __version__ = '1.7.0'
 
 import ftrack_api
 
-from . import statement
+from . import statement, utils
 from .query import Query, entity, and_, or_, not_
 from .event import event
 from .statement import select, create, update, delete
-from .utils import logger, dict_to_str
 
 
 class FTrackQuery(ftrack_api.Session):
@@ -29,7 +29,7 @@ class FTrackQuery(ftrack_api.Session):
         If the debug argument is set, the connection will be ignored.
         """
         self.debug = kwargs.pop('debug', False)
-        self._logger = kwargs.pop('logger', logger)
+        self._logger = kwargs.pop('logger', utils.logger)
         self._logger.debug('Connecting...')
         if not self.debug:
             super(FTrackQuery, self).__init__(**kwargs)
@@ -51,7 +51,7 @@ class FTrackQuery(ftrack_api.Session):
         if not self.debug:
             return super(FTrackQuery, self).close(*args, **kwargs)
 
-    def get(self, value, _value=None, *args, **kwargs):
+    def get(self, value, _value=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         """Get any entity from its ID.
         The _value argument is for compatibility with ftrack_api.Session.
         """
@@ -71,6 +71,7 @@ class FTrackQuery(ftrack_api.Session):
     def create(self, entity, data, *args, **kwargs):
         """Create a new entity."""
         if not kwargs.get('reconstructing', False):
+            self._logger.debug('Create: %s(%s)', entity, utils.dict_to_str(data))
         return super(FTrackQuery, self).create(entity, data, *args, **kwargs)
 
     def delete(self, entity, *args, **kwargs):

@@ -1,3 +1,6 @@
+# pylint: disable=consider-using-f-string
+"""General purpose functions."""
+
 import logging
 from functools import wraps
 
@@ -25,12 +28,12 @@ def clone_instance(func):
 def dict_to_str(dct):
     """Convert a dict to a string."""
     def convert(dct):
-        for k, v in dct.items():
-            if isinstance(v, ftrack_api.entity.base.Entity):
-                v = str(v)
+        for key, value in dct.items():
+            if isinstance(value, ftrack_api.entity.base.Entity):
+                value = str(value)
             else:
-                v = repr(v)
-            yield '{}={}'.format(k, v)
+                value = repr(value)
+            yield '{}={}'.format(key, value)
     return ', '.join(convert(dct))
 
 
