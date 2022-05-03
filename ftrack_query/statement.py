@@ -36,7 +36,7 @@ class Select(Statement, Query):
         query = super(Select, self).__str__()
         if query.startswith('select '):
             return query
-        return 'select ' + query
+        return 'select from ' + query
 
     def execute(self, session):
         """Execute the select statement."""
@@ -90,11 +90,14 @@ class Update(Statement, Query):
 
     def populate(self, *args, **kwargs):
         """Disable projections."""
-        raise ValueError('unable to use projections during updates')
+        raise AttributeError('projections not supported')
 
     def __str__(self):
         """Show a preview of what the statement is."""
-        return 'update ' + super(Update, self).__str__()
+        return 'update {} set ({})'.format(
+            super(Update, self).__str__(),
+            ', '.join('{}={!r}'.format(key, value) for key, value in self._values.items()),
+        )
 
     @clone_instance
     def values(self, **kwargs):
@@ -124,7 +127,7 @@ class Delete(Statement, Query):
 
     def populate(self, *args, **kwargs):
         """Disable projections."""
-        raise ValueError('unable to use projections during deletes')
+        raise AttributeError('projections not supported')
 
     def execute(self, session):
         """Execute the select statement."""

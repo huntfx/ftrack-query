@@ -362,7 +362,10 @@ class Query(AbstractQuery):
 
         self._populate += map(str, args)
         return self
-    select = populate
+
+    def select(self, *args):
+        """Prefetch attributes with the query."""
+        return self.populate(*args)
 
     @clone_instance
     def sort(self, attribute=None):
