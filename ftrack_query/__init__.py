@@ -59,24 +59,23 @@ class FTrackQuery(ftrack_api.Session):
             entity = 'Context'
         else:
             entity, value = value, _value
-        self._logger.debug('Get: {}({})'.format(entity, value.__repr__()))
+        self._logger.debug('Get: %s(%r)', entity, value)
         return super(FTrackQuery, self).get(entity, value, *args, **kwargs)
 
     def query(self, query, *args, **kwargs):
         """Create an FTrack query object from a string."""
         query = str(query)
-        self._logger.debug('Query: '+query)
+        self._logger.debug('Query: %s', query)
         return super(FTrackQuery, self).query(query, *args, **kwargs)
 
     def create(self, entity, data, *args, **kwargs):
         """Create a new entity."""
         if not kwargs.get('reconstructing', False):
-            self._logger.debug('Create: {}({})'.format(entity, dict_to_str(data)))
         return super(FTrackQuery, self).create(entity, data, *args, **kwargs)
 
     def delete(self, entity, *args, **kwargs):
         """Delete an FTrack entity."""
-        self._logger.debug('Delete: '+entity.__repr__())
+        self._logger.debug('Delete: %r', entity)
         return super(FTrackQuery, self).delete(entity, *args, **kwargs)
 
     def where(self, *args, **kwargs):
