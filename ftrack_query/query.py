@@ -356,9 +356,9 @@ class Query(AbstractQuery):
             attribute = str(attribute)
             if ' ' in attribute:
                 attribute, method = attribute.split(' ')
-                if method == 'descending':
+                if method in ('desc', 'descending'):
                     desc = True
-                elif method != 'ascending':
+                elif method != ('asc', 'ascending'):
                     raise NotImplementedError('unknown sorting method: {!r}'.format(method))
 
         if attribute is None:
@@ -366,7 +366,7 @@ class Query(AbstractQuery):
         else:
             self._sort.append((attribute, desc))
         return self
-    order = sort
+    order = order_by = sort
 
     @clone_instance
     def offset(self, value=None):
