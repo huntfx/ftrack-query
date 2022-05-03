@@ -1,3 +1,4 @@
+# pylint: disable=consider-using-f-string
 """Adapt the query syntax to become more like SQLAlchemy.
 The advantage of this is that it doesn't require a session to work.
 These are designed to be passed to `FTrackQuery.execute`, and it won't
@@ -21,13 +22,25 @@ from .utils import clone_instance
 class Statement(object):
     """Base class for statements to use for inheritance checks."""
 
+    @property
+    def raw_query(self):
+        """Return the actual query string, since __str__ is overridden."""
+        return super(Statement, self).__str__()
+
 
 class Select(Statement, Query):
     """Select entities."""
 
+    def __str__(self):
+        """Show a preview of what the statement is."""
+        query = super(Select, self).__str__()
+        if query.startswith('select '):
+            return query
+        return 'select ' + query
+
     def execute(self, session):
         """Execute the select statement."""
-        return session.query(str(self))
+        return session.query(self.raw_query)
 
 
 class Create(Statement):
@@ -40,6 +53,13 @@ class Create(Statement):
     def __init__(self, entity):
         self._entity = entity
         self._values = {}
+
+    def __str__(self):
+        """Show a preview of what the statement is."""
+        return 'create {}({})'.format(
+            self._entity,
+            ', '.join('{}={!r}'.format(key, value) for key, value in self._values.items()),
+        )
 
     def copy(self):
         """Create a new copy of the class."""
@@ -68,6 +88,14 @@ class Update(Statement, Query):
         self._values = {}
         super(Update, self).__init__(*args, **kwargs)
 
+    def populate(self, *args, **kwargs):
+        """Disable projections."""
+        raise ValueError('unable to use projections during updates')
+
+    def __str__(self):
+        """Show a preview of what the statement is."""
+        return 'update ' + super(Update, self).__str__()
+
     @clone_instance
     def values(self, **kwargs):
         """Set new values."""
@@ -80,7 +108,7 @@ class Update(Statement, Query):
         """
         count = 0
         with session.auto_populating(False):
-            for entity in session.query(str(self)):
+            for entity in session.query(self.raw_query):
                 for key, value in self._values.items():
                     entity[key] = value
                 count += 1
@@ -90,11 +118,19 @@ class Update(Statement, Query):
 class Delete(Statement, Query):
     """Delete entities."""
 
+    def __str__(self):
+        """Show a preview of what the statement is."""
+        return 'delete ' + super(Delete, self).__str__()
+
+    def populate(self, *args, **kwargs):
+        """Disable projections."""
+        raise ValueError('unable to use projections during deletes')
+
     def execute(self, session):
         """Execute the select statement."""
         count = 0
         with session.auto_populating(False):
-            for entity in session.query(str(self)):
+            for entity in session.query(self.raw_query):
                 session.delete(entity)
                 count += 1
         return count
