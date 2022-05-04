@@ -15,7 +15,7 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(str(select('Task.name')), 'select name from Task')
         self.assertEqual(str(select('Task.name')), str(select('Task').populate('name')))
         self.assertEqual(str(select('Task.parent').populate('children')), 'select parent, children from Task')
-        self.assertEqual(str(select('Task.parent', 'Task.children')), 'select parent, children from Task')
+        self.assertEqual(str(select('Task.parent', 'Task.children.name')), 'select parent, children.name from Task')
         with self.assertRaises(ValueError):
             select('Task.name', 'AssetVersion.name')
 

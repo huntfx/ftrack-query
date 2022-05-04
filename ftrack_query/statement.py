@@ -156,7 +156,7 @@ def select(*items):
     entity_type = None
     populate = []
     for item in items:
-        split = item.split('.')
+        split = item.split('.', 1)
         if entity_type is None:
             entity_type = split[0]
         elif entity_type != split[0]:
