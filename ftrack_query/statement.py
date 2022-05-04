@@ -134,7 +134,7 @@ class Delete(Statement, Query):
         raise AttributeError('projections not supported')
 
     @clone_instance
-    def clean_components(self, remove):
+    def clean_components(self, remove=True):
         """If a Component entity, then choose to delete it from locations.
 
         Example:
