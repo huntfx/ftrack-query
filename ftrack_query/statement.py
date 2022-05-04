@@ -121,6 +121,10 @@ class Update(Statement, Query):
 class Delete(Statement, Query):
     """Delete entities."""
 
+    def __init__(self, *args, **kwargs):
+        self._remove_components = False
+        super(Delete, self).__init__(*args, **kwargs)
+
     def __str__(self):
         """Show a preview of what the statement is."""
         return 'delete ' + super(Delete, self).__str__()
@@ -129,13 +133,50 @@ class Delete(Statement, Query):
         """Disable projections."""
         raise AttributeError('projections not supported')
 
+    @clone_instance
+    def clean_components(self, remove):
+        """If a Component entity, then choose to delete it from locations.
+
+        Example:
+            >>> delete('Component').where(id=123).clean_components()
+
+        Warning:
+            The process of removing components from locations is not a
+            transaction. That means that even if the session is rolled
+            back, the changes will persist.
+        """
+        self._remove_components = remove
+        return self
+
+    def copy(self):
+        # pylint: disable=protected-access
+        """Create a new copy of the class."""
+        new = super(Delete, self).copy()
+        new._remove_components = self._remove_components
+        return new
+
     def execute(self, session):
         """Execute the select statement."""
         count = 0
+
+        # Preload options if needed
+        if self._remove_components:
+            query = super(Delete, self).populate('component_locations.location').raw_query
+        else:
+            query = self.raw_query
+
+        # Delete each matching entity
         with session.auto_populating(False):
-            for entity in session.query(self.raw_query):
+            for entity in session.query(query):
+
+                # Remove components from locations
+                if self._remove_components:
+                    for component_location in entity['component_locations']:
+                        component_location['location'].remove_component(entity)
+
                 session.delete(entity)
                 count += 1
+
         return count
 
 
