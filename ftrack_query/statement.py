@@ -15,20 +15,12 @@ Example:
 
 __all__ = ['select', 'create', 'update', 'delete']
 
+from .abstract import AbstractStatement
 from .query import Query
 from .utils import clone_instance
 
 
-class Statement(object):
-    """Base class for statements to use for inheritance checks."""
-
-    @property
-    def raw_query(self):
-        """Return the actual query string, since __str__ is overridden."""
-        return super(Statement, self).__str__()
-
-
-class Select(Statement, Query):
+class Select(AbstractStatement, Query):
     """Select entities."""
 
     def __str__(self):
@@ -40,10 +32,10 @@ class Select(Statement, Query):
 
     def execute(self, session):
         """Execute the select statement."""
-        return session.query(self.raw_query)
+        return session.query(self.as_str())
 
 
-class Create(Statement):
+class Create(AbstractStatement):
     """Create entities.
 
     Since this works a bit differently to Query, a few methods have
@@ -81,7 +73,7 @@ class Create(Statement):
         return session.create(self._entity, self._values)
 
 
-class Update(Statement, Query):
+class Update(AbstractStatement, Query):
     """Update entities."""
 
     def __init__(self, *args, **kwargs):
@@ -111,14 +103,14 @@ class Update(Statement, Query):
         """
         count = 0
         with session.auto_populating(False):
-            for entity in session.query(self.raw_query):
+            for entity in session.query(self.as_str()):
                 for key, value in self._values.items():
                     entity[key] = value
                 count += 1
         return count
 
 
-class Delete(Statement, Query):
+class Delete(AbstractStatement, Query):
     """Delete entities."""
 
     def __init__(self, *args, **kwargs):
@@ -161,9 +153,9 @@ class Delete(Statement, Query):
 
         # Preload options if needed
         if self._remove_components:
-            query = super(Delete, self).populate('component_locations.location').raw_query
+            query = super(Delete, self).populate('component_locations.location').as_str()
         else:
-            query = self.raw_query
+            query = self.as_str()
 
         # Delete each matching entity
         with session.auto_populating(False):

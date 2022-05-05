@@ -138,3 +138,7 @@ class AbstractComparison(object):
             if isinstance(value, AbstractQuery):
                 value = value.one()
             yield cls(key)==value
+
+
+class AbstractStatement(object):
+    """Class to use for inheritance checks."""

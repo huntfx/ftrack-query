@@ -21,7 +21,7 @@ __all__ = ['entity', 'and_', 'or_', 'not_']
 
 import ftrack_api
 
-from .abstract import AbstractComparison, AbstractQuery
+from .abstract import AbstractComparison, AbstractQuery, AbstractStatement
 from .utils import Join, clone_instance, convert_output_value, not_, parse_operators
 
 
@@ -149,9 +149,9 @@ class Comparison(AbstractComparison):
         # If a single query, then a subquery will work as long as a select is done
         # If multiple queries, then raise an error
         if single_arg and isinstance(args[0], AbstractQuery):
-            subquery = str(args[0])
+            subquery = args[0].as_str()
             if not subquery.startswith('select '):
-                subquery = str(args[0].select('id'))
+                subquery = args[0].select('id').as_str()
             args = [subquery]
 
         elif isinstance(args[0], AbstractQuery):
@@ -236,8 +236,8 @@ class Query(AbstractQuery):
         return self._entity is not None
     __nonzero__ = __bool__
 
-    def __str__(self):
-        """Evaluate the query data and convert to a string."""
+    def as_str(self):
+        """Generate a string from the query data."""
         query = []
         if self._populate:
             query.append('select')
@@ -257,6 +257,9 @@ class Query(AbstractQuery):
         if self._limit is not None:
             query += ['limit', str(self._limit)]
         return ' '.join(filter(bool, query))
+
+    def __str__(self):
+        return self.as_str()
 
     def __call__(self, *args, **kwargs):
         """Custom error message if attempting to call.
