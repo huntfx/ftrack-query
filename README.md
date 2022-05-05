@@ -6,7 +6,11 @@ It is recommended to first read https://ftrack-python-api.readthedocs.io/en/stab
 ## Installation
     pip install ftrack_query
 
-## Example
+## Examples
+
+### Original Syntax
+This will build queries attached to the current session, which allows them to be executed directly.
+
 ```python
 from ftrack_query import FTrackQuery, entity, or_
 
@@ -22,26 +26,83 @@ with FTrackQuery() as session:
     task = session.Task.where(
         entity.status.name.in_('Lighting', 'Rendering'),
         or_(
-            entity.parent==session.Episode.first(),
-            entity.parent==None,
+            entity.parent == session.Episode.first(),
+            entity.parent == None,
         ),
         name='My Task',
     ).order(
         entity.type.name.desc(),
+    ).select(
+        'name', 'type.name', 'status.name',
     ).first()
 
     task['notes'].append(note)
     session.commit()
+```
 
-    # Events
+# Statement Syntax
+In version 1.7, new statement functions were added, to allow queries to be built without an associated `session` object.
+
+These require a `session.execute` call in order to work, but the underlying logic is the same as with the original syntax.
+
+```python
+from ftrack_query import FTrackQuery, select, create, update, delete
+
+with FTrackQuery() as session:
+    # Query
+    stmt = (
+        select('Task.name', 'Task.type.name', 'Task.status.name')
+        .where(entity.status.name.in_('Lighting', 'Rendering'))
+        .order_by(entity.name.desc())
+        .offset(5)
+        .limit(1)
+    )
+    task = session.execute(stmt).first()
+    print(f'Task found: {task})
+
+    # Create
+    stmt = (
+        create('Task')
+        .values(name='My Task', parent=task)
+    )
+    task = session.execute(stmt)
+    session.commit()
+    print(f'Task created: {task}')
+
+    # Update
+    stmt = (
+        update('Task')
+        .where(name='Old Task Name')
+        .values(name='New Task Name')
+    )
+    rows = session.execute(stmt)
+    session.commit()
+    print(f'Tasks updated: {rows}')
+
+    # Delete
+    stmt = (
+        delete('Task')
+        .where(name='Old Task Name')
+    )
+    rows = session.execute(stmt)
+    session.commit()
+    print(f'Tasks deleted: {rows}')
+```
+
+### Event Syntax
+The event system uses a slightly different query language, this has been added for convenience but generally should not be needed.
+
+```python
+from ftrack_query import FTrackQuery, event
+
+with FTrackQuery() as session:
     session.event_hub.subscribe(str(
         event.and_(
             event.topic('ftrack.update'),
-            event.data.user.name!=getuser(),
+            event.data.user.name != getuser(),
         )
     ))
     session.event_hub.wait()
-
 ```
 
 # Reference
@@ -64,7 +125,7 @@ Pre-fetch entity attributes.
 
 An an example, in order to iterate through the name of every user, it would be a good idea to prefetch `first_name` and `last_name`, as otherwise two queries will be performed for each individual user.
 
-### .sort(_attribute_)
+### .order_by(_attribute_)
 Sort the results by an attribute.
 
 The attribute and order can be given in the format `entity.name.desc()`, or as a raw string such as `name descending`.
@@ -103,50 +164,73 @@ Any comparison can be reversed with the `~` prefix or the `not_` function.
 ## and\_(_\*args, \*\*kwargs_) | or\_(_\*args, \*\*kwargs_)
 Join multiple comparisons. `and_` is used by default if nothing is provided.
 
+## Statements
+The statement functions build upon the `Query` object, but are not attached to any session. Instead of `session.Note`, it becomes `select('Note')`.
+
+### select(_\*_entity_type_)
+A select statement has access to the `Query` methods such as `.where()`.
+
+If multiple arguments are given, it will use these in place of `.populate()` (eg. `select('Task.name', Task.parent')` is the same as `select('Task').populate('name', 'parent')`).
+
+Calling `session.execute(stmt)` will execute the query and return FTrack's own `QueryResult` object, from which `.one()`, `.first()` or `.all()` may be called.
+
+### create(_entity_type_)
+A create statement has a `.values()` method used to input the data.
+
+Calling `session.execute(stmt)` will return the created entity.
+
+### update(_entity_type_)
+An update statement has access to all of the `Query` methods, but also has a `.values()` method used to input the new data.
+
+Calling `session.execute(stmt)` will return how many entities were found and updated.
+
+### delete(_entity_type_)
+A delete statement has access to most of the `Query` methods.
+
+Calling `session.execute(stmt)` will return how many entities were deleted.
+
+A convenience method, `.clean_components()`, can be used when deleting a `Component`. Enabling this will remove the component from every location before it is deleted.
+
+
+
 ## Equivalent examples from the [API reference](http://ftrack-python-api.rtd.ftrack.com/en/0.9.0/querying.html):
-Note: If an entity type is used multiple times, it's recommended to use `<Entity> = session.<Entity>` after the session is initialised. To save space below, that part has been omitted.
 
 ```python
-# projects = session.query('Project')
-# for project in projects:
-#     print project['name']
-projects = Project
-for project in projects:
-    print project['name']
+# Project
+select('Project')
 
-# session.query('Project').all()
-Project.all()
+# Project where status is active
+select('Project').where(status='active')
 
-# session.query('Project where status is active')
-Project.where(status='active')
-
-# session.query('Project where status is active and name like "%thrones"')
-Project.where(Project.name.like('%thrones'), status='active')
+# Project where status is active and name like "%thrones"
+select('Project').where(entity.name.like('%thrones'), status='active')
 
 # session.query('Project where status is active and (name like "%thrones" or full_name like "%thrones")')
-Project.where(or_(Project.name.like('%thrones'), Project.full_name.like('%thrones')), status='active')
+select('Project').where(or_(entity.name.like('%thrones'), entity.full_name.like('%thrones')), status='active')
 
 # session.query('Task where project.id is "{0}"'.format(project['id']))
-Task.where(project=project)
+select('Task').where(project=project)
 
 # session.query('Task where project.id is "{0}" and status.type.name is "Done"'.format(project['id']))
-Task.where(Task.status.type.name=='Done', project=project)
+select('Task').where(entity.status.type.name == 'Done', project=project)
 
 # session.query('Task where timelogs.start >= "{0}"'.format(arrow.now().floor('day')))
-Task.where(Task.timelogs.start>=arrow.now().floor('day'))
+select('Task').where(entity.timelogs.start >= arrow.now().floor('day'))
 
 # session.query('Note where author has (first_name is "Jane" and last_name is "Doe")')
-Note.where(Note.author.has(User.first_name=='Jane', User.last_name=='Doe'))
+select('Note').where(entity.author.has(first_name='Jane', last_name='Doe'))
 
 # session.query('User where not timelogs any ()')
-User.where(~User.timelogs.any())
+select('User').where(~entity.timelogs.any())
 
 # projects = session.query('select full_name, status.name from Project')
-Project.select('full_name', 'status.name')
+select('Project.full_name', 'Project.status.name')
+# or
+select('Project').populate('full_name', 'status.name')
 
 # select name from Project where allocations.resource[Group].memberships any (user.username is "john_doe")
-Project.select('name').where(Project.allocations.resource[Group].memberships.any(Membership.user.username=='john_doe'))
+select('Project').select('name').where(entity.allocations.resource['Group'].memberships.any(entity.user.username == 'john_doe'))
 
 # Note where parent_id is "{version_id}" or parent_id in (select id from ReviewSessionObject where version_id is "{version_id}")
-Note.where(or_(entity.parent_id.in_(ReviewSessionObject.where(version_id=version_id).select(entity.id)), parent_id=version_id))
+select('Note').where(or_(entity.parent_id.in_(select('ReviewSessionObject.id').where(version_id=version_id)), parent_id=version_id))
 ```
