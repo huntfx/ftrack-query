@@ -3,7 +3,7 @@ import unittest
 import sys
 
 sys.path.insert(0, os.path.normpath(os.path.dirname(__file__)).rsplit(os.path.sep, 1)[0])
-from ftrack_query import select, create, update, delete
+from ftrack_query import entity, select, create, update, delete
 
 
 class TestSelect(unittest.TestCase):
@@ -18,6 +18,16 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(str(select('Task.parent', 'Task.children.name')), 'select parent, children.name from Task')
         with self.assertRaises(ValueError):
             select('Task.name', 'AssetVersion.name')
+
+    def test_subquery(self):
+        self.assertEqual(
+            str(select('Task.name').where(entity.parent_id.in_(select('Shot.id').where(name='My Shot')))),
+            'select name from Task where parent_id in (select id from Shot where name is "My Shot")'
+        )
+        self.assertEqual(
+            str(select('Task.name').where(entity.parent.in_(select('Shot').where(name='My Shot')))),
+            'select name from Task where parent.id in (select id from Shot where name is "My Shot")'
+        )
 
 
 class TestCreate(unittest.TestCase):

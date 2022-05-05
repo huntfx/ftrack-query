@@ -150,17 +150,18 @@ class TestSessionComparison(unittest.TestCase):
             'Project where project_schema.id is "{}"'.format(schema['id']),
         )
 
-    def test_query_remap_in(self):
+    def test_subquery_in(self):
         schema = self.session.ProjectSchema.first()
         query = self.session.ProjectSchema.where(id=schema['id'])
         self.assertEqual(
             str(self.session.Project.where(entity.project_schema.in_(query))),
-            'Project where project_schema.id in ("{}")'.format(schema['id']),
+            'Project where project_schema.id in (select id from ProjectSchema where id is "{}")'.format(schema['id']),
         )
-        self.assertEqual(
-            str(self.session.Project.where(entity.project_schema.in_(query, query))),
-            'Project where project_schema.id in ("{id}", "{id}")'.format(id=schema['id']),
-        )
+        with self.assertRaises(ValueError):
+            self.assertEqual(
+                str(self.session.Project.where(entity.project_schema.in_(query, query))),
+                'Project where project_schema.id in ("{id}", "{id}")'.format(id=schema['id']),
+            )
 
 
 if __name__ == '__main__':

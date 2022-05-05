@@ -150,8 +150,14 @@ class Comparison(AbstractComparison):
         # If multiple queries, then raise an error
         if single_arg and isinstance(args[0], AbstractQuery):
             subquery = args[0].as_str()
+
+            # If a subquery has no projection, then select ID and remap the value
+            # eg. `parent in (Task)` will become `parent.id in (select id from Task)`
             if not subquery.startswith('select '):
-                subquery = args[0].select('id').as_str()
+                return self.__class__('{}.id in ({})'.format(
+                    self.value, args[0].select('id').as_str()
+                ))
+
             args = [subquery]
 
         elif isinstance(args[0], AbstractQuery):
