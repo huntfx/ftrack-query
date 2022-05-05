@@ -146,12 +146,16 @@ class Comparison(AbstractComparison):
         single_arg = len(args) == 1
 
         # Args were given as a built query
-        # If a single query, assume .all() is required
-        # If multiple queries, assume .one() is required on each
+        # If a single query, then a subquery will work as long as a select is done
+        # If multiple queries, then raise an error
         if single_arg and isinstance(args[0], AbstractQuery):
-            args = args[0].all()
+            subquery = str(args[0])
+            if not subquery.startswith('select '):
+                subquery = str(args[0].select('id'))
+            args = [subquery]
+
         elif isinstance(args[0], AbstractQuery):
-            args = [query.one() for query in args]
+            raise ValueError('unable to check against multiple subqueries')
 
         # Args were given as entities
         if isinstance(args[0], ftrack_api.entity.base.Entity):
