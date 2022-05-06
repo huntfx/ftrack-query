@@ -20,23 +20,23 @@ with open(os.path.join(os.path.dirname(__file__), 'requirements.txt'), 'r') as f
     requirements = [line.strip() for line in f]
 
 setup(
-    name = 'ftrack-query',
-    packages = find_packages(),
-    version = version,
+    name='ftrack-query',
+    packages=find_packages(),
+    version=version,
     license='MIT',
-    description = 'Easy query generation for the FTrack API.',
+    description='Easy query generation for the FTrack API.',
     long_description=readme,
     long_description_content_type='text/markdown',
-    author = 'Peter Hunt',
+    author='Peter Hunt',
     author_email='peter@huntfx.uk',
-    url = 'https://github.com/huntfx/ftrack-query',
-    download_url = 'https://github.com/huntfx/ftrack-query/archive/{}.tar.gz'.format(version),
+    url='https://github.com/huntfx/ftrack-query',
+    download_url='https://github.com/huntfx/ftrack-query/archive/{}.tar.gz'.format(version),
     project_urls={
         'Documentation': 'https://github.com/huntfx/ftrack-query/wiki',
         'Source': 'https://github.com/huntfx/ftrack-query',
         'Issues': 'https://github.com/huntfx/ftrack-query/issues',
     },
-    keywords = ['ftrack', 'api', 'query', 'event'],
+    keywords=['ftrack', 'api', 'query', 'event'],
     install_requires=requirements,
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -52,6 +52,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
     python_requires=('>=2.7.9, <4.0')
 )
