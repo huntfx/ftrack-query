@@ -190,6 +190,10 @@ class Comparison(AbstractComparison):
         """If a value ends with this."""
         return self.like('%' + value.replace('%', '\\%'))  # pylint: disable=no-value-for-parameter
 
+    def contains(self, value):
+        """If a value contains this."""
+        return self.like('%' + value.replace('%', '\\%') + '%')  # pylint: disable=no-value-for-parameter
+
 
 class Query(AbstractQuery):
     """Base class for constructing a query."""
