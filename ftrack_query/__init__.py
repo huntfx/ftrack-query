@@ -14,7 +14,8 @@ __version__ = '1.7.0'
 
 import ftrack_api
 
-from . import statement, utils
+from . import utils
+from .abstract import AbstractStatement
 from .query import Query, entity, and_, or_, not_
 from .event import event
 from .statement import select, create, update, delete
@@ -101,6 +102,6 @@ class FTrackQuery(ftrack_api.Session):
 
     def execute(self, stmt):
         """Execute a statement."""
-        if isinstance(stmt, statement.Statement):
+        if isinstance(stmt, AbstractStatement):
             return stmt.execute(self)
         raise NotImplementedError(type(stmt))
