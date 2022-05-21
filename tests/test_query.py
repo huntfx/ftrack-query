@@ -94,7 +94,7 @@ class TestComparison(unittest.TestCase):
 
     def test_sort(self):
         self.assertEqual(str(entity.a.desc()), 'a descending')
-        self.assertNotEqual(str(entity.a.desc), 'a descending')
+        self.assertEqual(str(entity.a.desc), 'a.desc')
         self.assertEqual(str(entity.a.b.asc()), 'a.b ascending')
 
     def test_call(self):
@@ -138,30 +138,59 @@ class TestSessionComparison(unittest.TestCase):
             'Project where project_schema.id in ("{}")'.format(schema['id'])
         )
 
-    def test_query_remap(self):
+    def test_id_remap_in_multiple(self):
         schema = self.session.ProjectSchema.first()
-        query = self.session.ProjectSchema.where(id=schema['id'])
         self.assertEqual(
-            str(self.session.Project.where(entity.project_schema == query)),
-            'Project where project_schema.id is "{}"'.format(schema['id']),
-        )
-        self.assertEqual(
-            str(self.session.Project.where(project_schema=query)),
-            'Project where project_schema.id is "{}"'.format(schema['id']),
+            str(self.session.Project.where(entity.project_schema.in_(schema, schema))),
+            'Project where project_schema.id in ("{s}", "{s}")'.format(s=schema['id'])
         )
 
-    def test_subquery_in(self):
-        schema = self.session.ProjectSchema.first()
-        query = self.session.ProjectSchema.where(id=schema['id'])
+
+class TestQueryComparison(unittest.TestCase):
+    def setUp(self):
+        self.session = FTrackQuery(debug=True)
+
+    def test_in(self):
+        query = self.session.ProjectSchema.where(name='My Schema')
         self.assertEqual(
             str(self.session.Project.where(entity.project_schema.in_(query))),
-            'Project where project_schema.id in (select id from ProjectSchema where id is "{}")'.format(schema['id']),
+            'Project where project_schema.id in (select id from ProjectSchema where name is "My Schema")',
         )
         with self.assertRaises(ValueError):
-            self.assertEqual(
-                str(self.session.Project.where(entity.project_schema.in_(query, query))),
-                'Project where project_schema.id in ("{id}", "{id}")'.format(id=schema['id']),
-            )
+            str(self.session.Project.where(entity.project_schema.in_(query, query)))
+
+    def test_has_simple(self):
+        query = self.session.ProjectSchema.where(name='My Schema')
+        self.assertEqual(
+            str(self.session.Project.where(entity.project_schema.has(query))),
+            'Project where project_schema has (name is "My Schema")',
+        )
+
+    def test_has_complex(self):
+        query = self.session.ProjectSchema.where(~entity.project.has(name='Invalid Project'), name='My Schema')
+        self.assertEqual(
+            str(self.session.Project.where(entity.project_schema.has(query))),
+            'Project where project_schema has (not project has (name is "Invalid Project") and name is "My Schema")',
+        )
+
+    def test_has_multiple(self):
+        query1 = self.session.ProjectSchema.where(~entity.project.has(name='Invalid Project'))
+        query2 = self.session.ProjectSchema.where(name='My Schema')
+        self.assertEqual(
+            str(self.session.Project.where(entity.project_schema.has(query1, query2))),
+            'Project where project_schema has (not project has (name is "Invalid Project") and name is "My Schema")',
+        )
+        self.assertEqual(
+            str(self.session.Project.where(entity.project_schema.any(query1, query2))),
+            'Project where project_schema any (not project has (name is "Invalid Project") and name is "My Schema")',
+        )
+
+    def test_equals(self):
+        with self.assertRaises(NotImplementedError):
+            entity.value == self.session.ProjectSchema.where(name='My Schema')
+        with self.assertRaises(NotImplementedError):
+            entity.value != self.session.ProjectSchema.where(name='My Schema')
+
 
 
 if __name__ == '__main__':

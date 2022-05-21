@@ -7,7 +7,10 @@ logger = logging.getLogger('ftrack-query')
 
 
 class AbstractQuery(object):
-    """Class to use for inheritance checks."""
+    """Base class to use mainly for inheritance checks."""
+
+    def __init__(self):
+        self._where = []
 
 
 class AbstractComparison(object):
@@ -94,10 +97,7 @@ class AbstractComparison(object):
 
         args:
             Query: An unexecuted query object.
-                This is not recommended, but an attempt will be made
-                to execute it for a single result.
-                It will raise an exception if multiple or none are
-                found.
+                This will be added as a subquery if supported.
 
             dict: Like kargs, but with relationships allowed.
                 A relationship like "parent.name" is not compatible
@@ -110,24 +110,23 @@ class AbstractComparison(object):
 
             Anything else passed in will get converted to strings.
             The comparison class has been designed to evaluate when
-            __str__ is called, but any custom class could be used.
+            to_str() is called, but any custom class could be used.
 
         kwargs:
             Search for attributes of an entity.
-            This is the recommended way to query if possible.
+            `(x=y)` is the equivelant of `(entity.x == y)`.
         """
         for arg in args:
-            # The query has not been performed, attempt to execute
-            # This shouldn't really be used, so don't catch any errors
             if isinstance(arg, AbstractQuery):
-                arg = arg.one()
+                for item in arg._where:
+                    yield item
 
-            if isinstance(arg, dict):
+            elif isinstance(arg, dict):
                 for key, value in arg.items():
-                    yield cls(key)==value
+                    yield cls(key) == value
 
             elif isinstance(arg, ftrack_api.entity.base.Entity):
-                raise TypeError("keyword required for {}".format(arg))
+                raise TypeError('keyword required for {}'.format(arg))
 
             # The object is likely a comparison object, so convert to str
             # If an actual string is input, then assume it's valid syntax
@@ -136,8 +135,11 @@ class AbstractComparison(object):
 
         for key, value in kwargs.items():
             if isinstance(value, AbstractQuery):
-                value = value.one()
-            yield cls(key)==value
+                for item in value._where:
+                    yield item
+
+            else:
+                yield cls(key) == value
 
 
 class AbstractStatement(object):

@@ -221,9 +221,9 @@ class Query(AbstractQuery):
     )
 
     def __init__(self, session, entity):
+        super(Query, self).__init__()
         self._session = session
         self._entity = entity
-        self._where = []
         self._populate = []
         self._sort = []
         self._offset = 0
@@ -293,7 +293,6 @@ class Query(AbstractQuery):
                     if result[key] == value:
                         return result
                 raise
-
 
         raise TypeError("'Query' object is not callable, "
                         "perhaps you meant to use 'Query.where()'?")

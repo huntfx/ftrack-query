@@ -41,9 +41,8 @@ def parse_operators(func):
     """Parse the value when an operator is used."""
     @wraps(func)
     def wrapper(self, value):
-        # If the item is constructed query, assume it's a single object
         if isinstance(value, AbstractQuery):
-            value = value.one()
+            raise NotImplementedError('query comparisons are not supported')
 
         # If the item is an FTrack entity, use the ID
         if isinstance(value, ftrack_api.entity.base.Entity):
