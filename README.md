@@ -234,3 +234,14 @@ select('Project').select('name').where(entity.allocations.resource['Group'].memb
 # Note where parent_id is "{version_id}" or parent_id in (select id from ReviewSessionObject where version_id is "{version_id}")
 select('Note').where(or_(entity.parent_id.in_(select('ReviewSessionObject.id').where(version_id=version_id)), parent_id=version_id))
 ```
+
+
+## Planned Changes for 2.0
+
+Since a lot of functionality has been added from the initial version, and old features are no longer needed, v2 is going to have a major overhaul.
+
+- Replace `session.<Entity>` with `session.select(<Entity>)` - this will also remove the `session.<Entity>.get()` shortcut
+- Replace `entity.x.y == z` with `attr('x.y') == z`
+- Add `session.select`, `session.update`, `session.insert` and `session.delete`. This will allow the same queries to run with or without an attached session.
+- All statements will have a `.execute()` method.
+- `session.execute(stmt)` will call `stmt.with_session(self).execute()`
