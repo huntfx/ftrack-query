@@ -13,7 +13,7 @@ Example:
     >>> session.commit()
 """
 
-__all__ = ['select', 'create', 'update', 'delete']
+__all__ = ['select', 'insert', 'create', 'update', 'delete']
 
 from .abstract import AbstractStatement
 from .query import Query
@@ -37,7 +37,7 @@ class Select(AbstractStatement, Query):
         return session.query(self.as_str())
 
 
-class Create(AbstractStatement):
+class Insert(AbstractStatement):
     """Create entities.
 
     Since this works a bit differently to Query, a few methods have
@@ -51,7 +51,7 @@ class Create(AbstractStatement):
 
     def __str__(self):
         """Show a preview of what the statement is."""
-        return 'create {}({})'.format(
+        return 'insert {}({})'.format(
             self._entity,
             ', '.join('{}={!r}'.format(key, value) for key, value in self._values.items()),
         )
@@ -216,18 +216,19 @@ def select(*items):
     return Select(None, entity_type).populate(*populate)
 
 
-def create(entity_type):
-    """Generate a create statement.
+def insert(entity_type):
+    """Generate an insert statement.
 
     Returns:
         Created entity.
 
     Example:
-        >>> stmt = create('Task').values(name='Test', parent_id=123)
+        >>> stmt = insert('Task').values(name='Test', parent_id=123)
         >>> session.execute(stmt)
         <Task>
     """
-    return Create(entity_type)
+    return Insert(entity_type)
+create = insert  # To be deprecated in 2.0
 
 
 def update(entity_type):
