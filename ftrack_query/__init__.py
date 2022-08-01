@@ -12,6 +12,8 @@ __all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event',
 
 __version__ = '1.8.0'
 
+from functools import wraps
+
 import ftrack_api
 
 from . import utils
@@ -19,6 +21,14 @@ from .abstract import AbstractStatement
 from .query import Query, entity, and_, or_, not_
 from .event import event
 from .statement import attr, select, insert, create, update, delete
+
+
+def _copydoc(from_fn):
+    """Copy a docstring from one function to another."""
+    def decorator(to_fn):
+        to_fn.__doc__ = from_fn.__doc__
+        return to_fn
+    return decorator
 
 
 class FTrackQuery(ftrack_api.Session):
@@ -106,21 +116,18 @@ class FTrackQuery(ftrack_api.Session):
             return stmt.with_session(self).execute()
         raise NotImplementedError(type(stmt))
 
+    @_copydoc(select)
     def select(self, *items):
         return select(*items).with_session(self)
 
+    @_copydoc(insert)
     def insert(self, entity_type):
         return insert(entity_type).with_session(self)
 
+    @_copydoc(update)
     def update(self, entity_type):
         return update(entity_type).with_session(self)
 
+    @_copydoc(delete)
     def delete(self, entity_type):
         return delete(entity_type).with_session(self)
-
-
-# Copy docstrings
-FTrackQuery.select.__doc__ = select.__doc__
-FTrackQuery.insert.__doc__ = insert.__doc__
-FTrackQuery.update.__doc__ = update.__doc__
-FTrackQuery.delete.__doc__ = delete.__doc__
