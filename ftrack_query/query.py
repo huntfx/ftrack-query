@@ -435,6 +435,12 @@ class Query(AbstractQuery):
         return self
     reverse = __reversed__
 
+    @clone_instance
+    def with_session(self, session):
+        """Attach a new session to the query."""
+        self._session = session
+        return self
+
 
 class Entity(object):
     """Quick access to a basic query object for comparisons.

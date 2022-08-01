@@ -103,5 +103,5 @@ class FTrackQuery(ftrack_api.Session):
     def execute(self, stmt):
         """Execute a statement."""
         if isinstance(stmt, AbstractStatement):
-            return stmt.execute(self)
+            return stmt.with_session(self).execute()
         raise NotImplementedError(type(stmt))

@@ -30,8 +30,10 @@ class Select(AbstractStatement, Query):
             return query
         return 'select from ' + query
 
-    def execute(self, session):
+    def execute(self, session=None):
         """Execute the select statement."""
+        if session is None:
+            session = self._session
         return session.query(self.as_str())
 
 
@@ -45,6 +47,7 @@ class Create(AbstractStatement):
     def __init__(self, entity):
         self._entity = entity
         self._values = {}
+        self._session = None
 
     def __str__(self):
         """Show a preview of what the statement is."""
@@ -66,10 +69,18 @@ class Create(AbstractStatement):
         self._values.update(kwargs)
         return self
 
-    def execute(self, session):
+    @clone_instance
+    def with_session(self, session):
+        """Attach a new session to the query."""
+        self._session = session
+        return self
+
+    def execute(self, session=None):
         """Execute the update statement.
         This does not commit changes.
         """
+        if session is None:
+            session = self._session
         return session.create(self._entity, self._values)
 
 
@@ -97,10 +108,13 @@ class Update(AbstractStatement, Query):
         self._values.update(kwargs)
         return self
 
-    def execute(self, session):
+    def execute(self, session=None):
         """Execute the update statement.
         This does not commit changes.
         """
+        if session is None:
+            session = self._session
+
         count = 0
         with session.auto_populating(False):
             for entity in session.query(self.as_str()):
@@ -147,8 +161,11 @@ class Delete(AbstractStatement, Query):
         new._remove_components = self._remove_components
         return new
 
-    def execute(self, session):
+    def execute(self, session=None):
         """Execute the select statement."""
+        if session is None:
+            session = self._session
+
         count = 0
 
         # Preload options if needed
