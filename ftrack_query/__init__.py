@@ -105,3 +105,22 @@ class FTrackQuery(ftrack_api.Session):
         if isinstance(stmt, AbstractStatement):
             return stmt.with_session(self).execute()
         raise NotImplementedError(type(stmt))
+
+    def select(self, *items):
+        return select(*items).with_session(self)
+
+    def insert(self, entity_type):
+        return insert(entity_type).with_session(self)
+
+    def update(self, entity_type):
+        return update(entity_type).with_session(self)
+
+    def delete(self, entity_type):
+        return delete(entity_type).with_session(self)
+
+
+# Copy docstrings
+FTrackQuery.select.__doc__ = select.__doc__
+FTrackQuery.insert.__doc__ = insert.__doc__
+FTrackQuery.update.__doc__ = update.__doc__
+FTrackQuery.delete.__doc__ = delete.__doc__
