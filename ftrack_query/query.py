@@ -169,11 +169,18 @@ class Comparison(AbstractComparison):
                 self.value, ', '.join(convert_output_value(entity['id']) for entity in args)
             ))
 
-        # Args were given as a list of strings
-        if single_arg and args[0].startswith('select ') and ' from ' in args[0]:
-            subquery = args[0]
-        else:
+        # Args were given as a list
+        subquery = None
+        try:
+            # Allow subqueries to be manually written
+            if single_arg and args[0].startswith('select ') and ' from ' in args[0]:
+                subquery = args[0]
+        except AttributeError:
+            pass
+        # Correctly format the values based on their type
+        if subquery is None:
             subquery = ', '.join(map(convert_output_value, args))
+
         return self.__class__('{} in ({})'.format(self.value, subquery))
 
     def not_in(self, *args):
