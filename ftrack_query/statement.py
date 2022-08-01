@@ -16,7 +16,7 @@ Example:
 __all__ = ['select', 'insert', 'create', 'update', 'delete']
 
 from .abstract import AbstractStatement
-from .query import Query
+from .query import Query, Comparison
 from .utils import clone_instance
 
 
@@ -257,3 +257,12 @@ def delete(entity_type):
         1
     """
     return Delete(None, entity_type)
+
+
+def attr(item):
+    """Easily access comparisons.
+
+    Example:
+        >>> attr('parent.version') > 0
+    """
+    return Comparison(item)
