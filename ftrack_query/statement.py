@@ -15,9 +15,11 @@ Example:
 
 __all__ = ['select', 'insert', 'create', 'update', 'delete']
 
+from ftrack_api.query import QueryResult
+
 from .abstract import AbstractStatement
 from .query import Query, Comparison
-from .utils import clone_instance
+from .utils import clone_instance, copy_doc
 
 
 class Select(AbstractStatement, Query):
@@ -35,6 +37,22 @@ class Select(AbstractStatement, Query):
         if session is None:
             session = self._session
         return session.query(self.as_str())
+
+    def __iter__(self):
+        """Iterate through the results."""
+        return self.execute().__iter__()
+
+    @copy_doc(QueryResult.one)
+    def one(self):
+        return self.execute().one()
+
+    @copy_doc(QueryResult.first)
+    def first(self):
+        return self.execute().first()
+
+    @copy_doc(QueryResult.all)
+    def all(self):
+        return self.execute().all()
 
 
 class Insert(AbstractStatement):

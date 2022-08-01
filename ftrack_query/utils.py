@@ -87,3 +87,11 @@ class Join(object):
         if self.brackets and len(query_parts) > 1:
             return self.comparison('({})'.format(query))
         return self.comparison(query)
+
+
+def copy_doc(from_fn):
+    """Copy a docstring from one function to another."""
+    def decorator(to_fn):
+        to_fn.__doc__ = from_fn.__doc__
+        return to_fn
+    return decorator
