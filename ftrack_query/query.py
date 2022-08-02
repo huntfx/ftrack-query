@@ -19,6 +19,8 @@ Example:
 
 __all__ = ['entity', 'and_', 'or_', 'not_']
 
+from types import GeneratorType
+
 import ftrack_api
 
 from .abstract import AbstractComparison, AbstractQuery, AbstractStatement
@@ -161,10 +163,13 @@ class Comparison(AbstractComparison):
             raise ValueError('unable to check against multiple subqueries')
 
         # Args were given as entities
-        if isinstance(args[0], ftrack_api.entity.base.Entity):
+        elif isinstance(args[0], ftrack_api.entity.base.Entity):
             return self.__class__('{}.id in ({})'.format(
                 self.value, ', '.join(convert_output_value(entity['id']) for entity in args)
             ))
+
+        elif single_arg and isinstance(args[0], GeneratorType):
+            args = list(args[0])
 
         # Args were given as a list
         subquery = None
