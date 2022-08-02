@@ -21,12 +21,16 @@ class TestSelect(unittest.TestCase):
 
     def test_subquery(self):
         self.assertEqual(
-            str(select('Task.name').where(entity.parent_id.in_(select('Shot.id').where(name='My Shot')))),
-            'select name from Task where parent_id in (select id from Shot where name is "My Shot")'
+            str(select('Task.name').where(entity.parent.id.in_(select('Shot').where(name='My Shot')))),
+            'select name from Task where parent.id in (select id from Shot where name is "My Shot")'
         )
         self.assertEqual(
-            str(select('Task.name').where(entity.parent.in_(select('Shot').where(name='My Shot')))),
+            str(select('Task.name').where(entity.parent.id.in_(select('Shot.id').where(name='My Shot')))),
             'select name from Task where parent.id in (select id from Shot where name is "My Shot")'
+        )
+        (
+            str(select('Task.name').where(entity.parent.name.in_(select('Shot.name').where(name='My Shot')))),
+            'select name from Task where parent.name in (select name from Shot where name is "My Shot")'
         )
 
 

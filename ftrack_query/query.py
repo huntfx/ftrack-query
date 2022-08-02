@@ -149,16 +149,13 @@ class Comparison(AbstractComparison):
         # If a single query, then a subquery will work as long as a select is done
         # If multiple queries, then raise an error
         if single_arg and isinstance(args[0], AbstractQuery):
-            subquery = args[0].as_str()
+            subquery = args[0]
 
-            # If a subquery has no projection, then select ID and remap the value
-            # eg. `parent in (Task)` will become `parent.id in (select id from Task)`
-            if not subquery.startswith('select '):
-                return self.__class__('{}.id in ({})'.format(
-                    self.value, args[0].select('id').as_str()
-                ))
+            # Ensure the query has a projection, because "select from" is required
+            if not subquery._populate:
+                subquery = subquery.populate('id')
 
-            args = [subquery]
+            args = [subquery.as_str()]
 
         elif isinstance(args[0], AbstractQuery):
             raise ValueError('unable to check against multiple subqueries')
