@@ -8,11 +8,9 @@ orientated approach. Inspiration was taken from SQLALchemy.
 """
 
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event',
-           'select', 'create', 'insert', 'update', 'delete', 'attr']
+           'select', 'create', 'update', 'delete', 'attr']
 
 __version__ = '1.8.0'
-
-from functools import wraps
 
 import ftrack_api
 
@@ -20,7 +18,7 @@ from . import utils
 from .abstract import AbstractStatement
 from .query import Query, entity, and_, or_, not_
 from .event import event
-from .statement import attr, select, insert, create, update, delete
+from .statement import attr, select, create, update, delete
 from .utils import copy_doc
 
 

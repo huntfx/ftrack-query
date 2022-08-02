@@ -3,7 +3,7 @@ import unittest
 import sys
 
 sys.path.insert(0, os.path.normpath(os.path.dirname(__file__)).rsplit(os.path.sep, 1)[0])
-from ftrack_query import entity, select, insert, update, delete
+from ftrack_query import entity, select, create, update, delete
 
 
 class TestSelect(unittest.TestCase):
@@ -30,13 +30,13 @@ class TestSelect(unittest.TestCase):
         )
 
 
-class TestInsert(unittest.TestCase):
+class TestCreate(unittest.TestCase):
     def test_basic(self):
-        self.assertEqual(str(insert('Task').values(name='New Task')), "insert Task(name='New Task')")
+        self.assertEqual(str(create('Task').values(name='New Task')), "create Task(name='New Task')")
 
     def test_where(self):
         with self.assertRaises(AttributeError):
-            insert('Task').where(name='New Task')
+            create('Task').where(name='New Task')
 
 
 class TestUpdate(unittest.TestCase):
