@@ -112,15 +112,3 @@ class FTrackQuery(ftrack_api.Session):
     @copy_doc(select)
     def select(self, *items):
         return select(*items).with_session(self)
-
-    @copy_doc(insert)
-    def insert(self, entity_type):
-        return insert(entity_type).with_session(self)
-
-    @copy_doc(update)
-    def update(self, entity_type):
-        return update(entity_type).with_session(self)
-
-    @copy_doc(delete)
-    def delete(self, entity_type):
-        return delete(entity_type).with_session(self)
