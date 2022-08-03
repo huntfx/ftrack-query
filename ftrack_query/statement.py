@@ -15,6 +15,8 @@ Example:
 
 __all__ = ['select', 'create', 'update', 'delete']
 
+from types import GeneratorType
+
 from ftrack_api.query import QueryResult
 
 from .abstract import AbstractStatement
@@ -85,6 +87,9 @@ class Create(AbstractStatement):
     @clone_instance
     def values(self, **kwargs):
         """Set creation values."""
+        for k, v in kwargs.items():
+            if isinstance(v, GeneratorType):
+                kwargs[k] = list(v)
         self._values.update(kwargs)
         return self
 
@@ -124,6 +129,9 @@ class Update(AbstractStatement, Query):
     @clone_instance
     def values(self, **kwargs):
         """Set new values."""
+        for k, v in kwargs.items():
+            if isinstance(v, GeneratorType):
+                kwargs[k] = list(v)
         self._values.update(kwargs)
         return self
 
