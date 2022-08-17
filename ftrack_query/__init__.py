@@ -35,7 +35,10 @@ class FTrackQuery(ftrack_api.Session):
         self.debug = debug
 
         if page_size is None:
-            page_size = int(os.environ.get('FTRACK_API_PAGE_SIZE', 0)) or None
+            try:
+                page_size = int(os.environ.get('FTRACK_API_PAGE_SIZE', 0)) or None
+            except ValueError:
+                pass
         self.page_size = page_size
 
         self._logger = logger
