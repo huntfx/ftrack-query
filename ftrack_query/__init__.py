@@ -12,6 +12,8 @@ __all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event',
 
 __version__ = '1.8.0'
 
+import os
+
 import ftrack_api
 
 from . import utils
@@ -30,10 +32,15 @@ class FTrackQuery(ftrack_api.Session):
         """Attempt to initialise the connection.
         If the debug argument is set, the connection will be ignored.
         """
-        self.page_size = page_size
         self.debug = debug
+
+        if page_size is None:
+            page_size = int(os.environ.get('FTRACK_API_PAGE_SIZE', 0)) or None
+        self.page_size = page_size
+
         self._logger = logger
         self._logger.debug('Connecting...')
+
         if not self.debug:
             super(FTrackQuery, self).__init__(**kwargs)
         self._logger.debug('New session initialised.')
