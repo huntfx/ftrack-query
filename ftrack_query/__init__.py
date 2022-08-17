@@ -26,12 +26,13 @@ class FTrackQuery(ftrack_api.Session):
     # pylint: disable=arguments-differ
     """Expansion of the ftrack_api.Session class."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, page_size=None, logger=utils.logger, debug=False, **kwargs):
         """Attempt to initialise the connection.
         If the debug argument is set, the connection will be ignored.
         """
-        self.debug = kwargs.pop('debug', False)
-        self._logger = kwargs.pop('logger', utils.logger)
+        self.page_size = page_size
+        self.debug = debug
+        self._logger = logger
         self._logger.debug('Connecting...')
         if not self.debug:
             super(FTrackQuery, self).__init__(**kwargs)
@@ -64,11 +65,17 @@ class FTrackQuery(ftrack_api.Session):
         self._logger.debug('Get: %s(%r)', entity, value)
         return super(FTrackQuery, self).get(entity, value, *args, **kwargs)
 
-    def query(self, query, *args, **kwargs):
+    def query(self, query, page_size=None, **kwargs):
         """Create an FTrack query object from a string."""
         query = str(query)
         self._logger.debug('Query: %s', query)
-        return super(FTrackQuery, self).query(query, *args, **kwargs)
+
+        # Set page size
+        page_size = page_size or self.page_size
+        if page_size:
+            kwargs['page_size'] = page_size
+
+        return super(FTrackQuery, self).query(query, **kwargs)
 
     def create(self, entity, data, *args, **kwargs):
         """Create a new entity."""
@@ -104,9 +111,10 @@ class FTrackQuery(ftrack_api.Session):
     def execute(self, stmt):
         """Execute a statement."""
         if isinstance(stmt, AbstractStatement):
-            return stmt.with_session(self).execute()
+            return stmt.options(session=self).execute()
         raise NotImplementedError(type(stmt))
 
     @copy_doc(select)
     def select(self, *items):
-        return select(*items).with_session(self)
+        """Generate a select statement with the session attached."""
+        return select(*items).options(session=self)

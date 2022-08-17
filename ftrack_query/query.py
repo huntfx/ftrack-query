@@ -22,6 +22,7 @@ __all__ = ['entity', 'and_', 'or_', 'not_']
 from types import GeneratorType
 
 import ftrack_api
+from ftrack_api.symbol import NOT_SET
 
 from .abstract import AbstractComparison, AbstractQuery, AbstractStatement
 from .utils import Join, clone_instance, convert_output_value, not_, parse_operators
@@ -237,6 +238,7 @@ class Query(AbstractQuery):
         self._sort = []
         self._offset = 0
         self._limit = None
+        self._page_size = None
 
     def __len__(self):
         """Get the number of results.
@@ -308,7 +310,7 @@ class Query(AbstractQuery):
 
     def __iter__(self):
         """Iterate through results without executing the full query."""
-        return self._session.query(str(self)).__iter__()
+        return iter(self._exec_query())
 
     @clone_instance
     def __or__(self, entity):
@@ -326,6 +328,7 @@ class Query(AbstractQuery):
         new._sort = list(self._sort)
         new._offset = self._offset
         new._limit = self._limit
+        new._page_size = self._page_size
         return new
 
     def get(self, value, _value=None):
@@ -348,17 +351,21 @@ class Query(AbstractQuery):
         """
         return self._session.ensure(self._entity, kwargs)
 
+    def _exec_query(self):
+        """Execute the current query."""
+        return self._session.query(self.as_str(), page_size=self._page_size)
+
     def one(self):
         """Returns and expects a single query result."""
-        return self._session.query(str(self)).one()
+        return self._exec_query().one()
 
     def first(self):
         """Returns the first available query result, or None."""
-        return self._session.query(str(self)).first()
+        return self._exec_query().first()
 
     def all(self):
         """Returns every query result."""
-        return self._session.query(str(self)).all()
+        return self._exec_query().all()
 
     def keys(self):
         """Get the keys related to an entity.
@@ -438,9 +445,17 @@ class Query(AbstractQuery):
     reverse = __reversed__
 
     @clone_instance
-    def with_session(self, session):
-        """Attach a new session to the query."""
-        self._session = session
+    def options(self, session=NOT_SET, page_size=NOT_SET):
+        """Set new query options.
+
+        Parameters:
+            session (FTrackQuery): New session instance.
+            page_size (int): Number of results to fetch at once.
+        """
+        if session is not NOT_SET:
+            self._session = session
+        if page_size is not NOT_SET:
+            self._page_size = page_size
         return self
 
 

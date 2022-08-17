@@ -18,6 +18,7 @@ __all__ = ['select', 'create', 'update', 'delete']
 from types import GeneratorType
 
 from ftrack_api.query import QueryResult
+from ftrack_api.symbol import NOT_SET
 
 from .abstract import AbstractStatement
 from .query import Query, Comparison
@@ -36,9 +37,9 @@ class Select(AbstractStatement, Query):
 
     def execute(self, session=None):
         """Execute the select statement."""
-        if session is None:
-            session = self._session
-        return session.query(self.as_str())
+        if session is not None:
+            self = self.options(session=session)
+        return self._exec_query()
 
     def __iter__(self):
         """Iterate through the results."""
@@ -94,9 +95,14 @@ class Create(AbstractStatement):
         return self
 
     @clone_instance
-    def with_session(self, session):
-        """Attach a new session to the query."""
-        self._session = session
+    def options(self, session=NOT_SET):
+        """Set new query options.
+
+        Parameters:
+            session (FTrackQuery): New session instance.
+        """
+        if session is not NOT_SET:
+            self._session = session
         return self
 
     def execute(self, session=None):

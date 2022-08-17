@@ -244,4 +244,4 @@ Since a lot of functionality has been added from the initial version, and old fe
 - Replace `entity.x.y == z` with `attr('x.y') == z`
 - Add `session.select`, `session.update`, `session.insert` and `session.delete`. This will allow the same queries to run with or without an attached session.
 - All statements will have a `.execute()` method.
-- `session.execute(stmt)` will call `stmt.with_session(self).execute()`
+- `session.execute(stmt)` will call `stmt.options(session=self).execute()`
