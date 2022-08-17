@@ -154,7 +154,7 @@ class TestQueryComparison(unittest.TestCase):
         query = self.session.ProjectSchema.where(name='My Schema')
         self.assertEqual(
             str(self.session.Project.where(entity.project_schema.in_(query))),
-            'Project where project_schema.id in (select id from ProjectSchema where name is "My Schema")',
+            'Project where project_schema in (select id from ProjectSchema where name is "My Schema")',
         )
         with self.assertRaises(ValueError):
             str(self.session.Project.where(entity.project_schema.in_(query, query)))
