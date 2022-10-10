@@ -42,6 +42,11 @@ class TestCreate(unittest.TestCase):
         with self.assertRaises(AttributeError):
             create('Task').where(name='New Task')
 
+    def test_copy(self):
+        stmt = create('Task')
+        substmt = stmt.values(name='Test')
+        self.assertNotEqual(str(stmt), str(substmt))
+
 
 class TestUpdate(unittest.TestCase):
     def test_basic(self):

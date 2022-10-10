@@ -81,7 +81,7 @@ class Create(AbstractStatement):
         """Create a new copy of the class."""
         # pylint: disable=protected-access
         new = type(self)(entity=self._entity)
-        new._values = self._values
+        new._values = self._values.copy()
         new._session = self._session
         return new
 
