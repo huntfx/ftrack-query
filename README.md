@@ -189,7 +189,7 @@ A delete statement has access to most of the `Query` methods.
 
 Calling `session.execute(stmt)` will return how many entities were deleted.
 
-A convenience method, `.clean_components()`, can be used when deleting a `Component`. Enabling this will remove the component from every location before it is deleted.
+A convenience method, `.options(remove_components=True)`, can be used when deleting a `Component`. Enabling this will remove the component from every location before it is deleted.
 
 
 
