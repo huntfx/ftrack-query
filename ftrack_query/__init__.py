@@ -10,7 +10,7 @@ orientated approach. Inspiration was taken from SQLALchemy.
 __all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event',
            'select', 'create', 'update', 'delete', 'attr']
 
-__version__ = '1.8.1'
+__version__ = '1.8.2'
 
 import os
 

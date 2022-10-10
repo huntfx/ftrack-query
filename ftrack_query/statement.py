@@ -187,6 +187,19 @@ class Delete(AbstractStatement, Query):
         self._remove_components = remove
         return self
 
+    @clone_instance
+    def options(self, remove_components=NOT_SET, **kwargs):
+        """Set new query options.
+
+        Parameters:
+            remove_components (bool): Remove components from locations.
+                Warning: This is not a transation, and any changes are
+                permanent. Performing a rollback will not undo this.
+        """
+        if remove_components is not NOT_SET:
+            self._remove_components = remove_components
+        return super(Delete, self).options(**kwargs)
+
     def copy(self):
         # pylint: disable=protected-access
         """Create a new copy of the class."""

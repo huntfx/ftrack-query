@@ -65,6 +65,20 @@ class TestDelete(unittest.TestCase):
         self.assertEqual(str(delete('Task').where(name='My Task').limit(1)),
                          'delete Task where name is "My Task" limit 1')
 
+    def test_delete_component_options(self):
+        stmt = delete('Component').where(id=123).options(session=None)
+        delete_method = stmt.clean_components()
+        delete_option = stmt.options(remove_components=True)
+
+        self.assertTrue(delete_method._remove_components)
+        self.assertTrue(delete_option._remove_components)
+
+        delete_method = stmt.clean_components(False)
+        delete_option = stmt.options(remove_components=False)
+
+        self.assertFalse(delete_method._remove_components)
+        self.assertFalse(delete_option._remove_components)
+
 
 if __name__ == '__main__':
     unittest.main()
