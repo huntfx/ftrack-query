@@ -3,7 +3,7 @@ import unittest
 import sys
 
 sys.path.insert(0, os.path.normpath(os.path.dirname(__file__)).rsplit(os.path.sep, 1)[0])
-from ftrack_query import FTrackQuery, attr, entity, select
+from ftrack_query import FTrackQuery, exception, attr, entity, select
 
 
 class TestSelect(unittest.TestCase):
@@ -56,6 +56,18 @@ class TestOptions(unittest.TestCase):
     def test_page_size(self):
         query = self.session.select('Task').options(page_size=50)
         self.assertEqual(query._page_size, 50)
+
+
+class TestException(unittest.TestCase):
+    def setUp(self):
+        self.session = FTrackQuery(debug=True)
+
+    def testUnboundSession(self):
+        with self.assertRaises(exception.UnboundSessionError):
+            select('Task').first()
+
+        with self.assertRaises(exception.UnboundSessionError):
+            self.session.select('Task').options(session=None).first()
 
 
 if __name__ == '__main__':

@@ -7,16 +7,16 @@ It's designed to hide the SQL-like syntax in favour of an object
 orientated approach. Inspiration was taken from SQLALchemy.
 """
 
-__all__ = ['FTrackQuery', 'entity', 'and_', 'or_', 'not_', 'event',
+__all__ = ['FTrackQuery', 'exception', 'entity', 'and_', 'or_', 'not_', 'event',
            'select', 'create', 'update', 'delete', 'attr']
 
-__version__ = '1.8.2'
+__version__ = '1.8.3'
 
 import os
 
 import ftrack_api
 
-from . import utils
+from . import exception, utils
 from .abstract import AbstractStatement
 from .query import Query, entity, and_, or_, not_
 from .event import event

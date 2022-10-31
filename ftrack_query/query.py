@@ -25,6 +25,7 @@ import ftrack_api
 from ftrack_api.symbol import NOT_SET
 
 from .abstract import AbstractComparison, AbstractQuery, AbstractStatement
+from .exception import UnboundSessionError
 from .utils import Join, clone_instance, convert_output_value, not_, parse_operators
 
 
@@ -335,6 +336,9 @@ class Query(AbstractQuery):
         """Get an entity from the ID.
         The _value argument is for compatibility with ftrack_api.Session.
         """
+        if self._session is None:
+            raise UnboundSessionError
+
         if _value is None:
             entity = self._entity
         else:
@@ -343,16 +347,22 @@ class Query(AbstractQuery):
 
     def create(self, **kwargs):
         """Create a new entity."""
+        if self._session is None:
+            raise UnboundSessionError
         return self._session.create(self._entity, kwargs)
 
     def ensure(self, **kwargs):
         """Ensure an entity.
         Will create if it doesn't exist.
         """
+        if self._session is None:
+            raise UnboundSessionError
         return self._session.ensure(self._entity, kwargs)
 
     def _exec_query(self):
         """Execute the current query."""
+        if self._session is None:
+            raise UnboundSessionError
         return self._session.query(self.as_str(), page_size=self._page_size)
 
     def one(self):

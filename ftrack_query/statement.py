@@ -21,6 +21,7 @@ from ftrack_api.query import QueryResult
 from ftrack_api.symbol import NOT_SET
 
 from .abstract import AbstractStatement
+from .exception import UnboundSessionError
 from .query import Query, Comparison
 from .utils import clone_instance, copy_doc
 
@@ -110,6 +111,8 @@ class Create(AbstractStatement):
         This does not commit changes.
         """
         if session is None:
+            if self._session is None:
+                raise UnboundSessionError
             session = self._session
         return session.create(self._entity, self._values)
 
@@ -146,6 +149,8 @@ class Update(AbstractStatement, Query):
         This does not commit changes.
         """
         if session is None:
+            if self._session is None:
+                raise UnboundSessionError
             session = self._session
 
         count = 0
@@ -210,6 +215,8 @@ class Delete(AbstractStatement, Query):
     def execute(self, session=None):
         """Execute the select statement."""
         if session is None:
+            if self._session is None:
+                raise UnboundSessionError
             session = self._session
 
         count = 0
