@@ -145,14 +145,17 @@ class Comparison(AbstractComparison):
         attempt is made to guess if the input is a subquery or a list
         of possible values.
         """
+        # Unpack generators
+        if len(args) == 1 and isinstance(args[0], GeneratorType):
+            args = tuple(args[0])
+
         if not args:
-            return self.__class__('{} in ()'.format(self.value))
-        single_arg = len(args) == 1
+            return self.__class__('{} in ("")'.format(self.value))
 
         # Args were given as a built query
         # If a single query, then a subquery will work as long as a select is done
         # If multiple queries, then raise an error
-        if single_arg and isinstance(args[0], AbstractQuery):
+        if len(args) == 1 and isinstance(args[0], AbstractQuery):
             subquery = args[0]
 
             # Ensure the query has a projection, because "select from" is required
@@ -170,14 +173,11 @@ class Comparison(AbstractComparison):
                 self.value, ', '.join(convert_output_value(entity['id']) for entity in args)
             ))
 
-        elif single_arg and isinstance(args[0], GeneratorType):
-            args = list(args[0])
-
         # Args were given as a list
         subquery = None
         try:
             # Allow subqueries to be manually written
-            if single_arg and args[0].startswith('select ') and ' from ' in args[0]:
+            if len(args) == 1 and args[0].startswith('select ') and ' from ' in args[0]:
                 subquery = args[0]
         except AttributeError:
             pass
