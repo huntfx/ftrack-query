@@ -41,6 +41,8 @@ class TestComparison(unittest.TestCase):
         self.assertEqual(str(entity.a.b.in_('select id from User')), 'a.b in (select id from User)')
         self.assertEqual(str(entity.a.b.in_('c', 'd', 'e')), 'a.b in ("c", "d", "e")')
         self.assertEqual(str(entity.a.b.in_('c')), 'a.b in ("c")')
+        self.assertEqual(str(entity.a.b.in_()), 'a.b in ("")')
+        self.assertEqual(str(entity.a.b.in_(i for i in ())), 'a.b in ("")')
         # TODO: Check if ints work with the API
 
     def test_not(self):
