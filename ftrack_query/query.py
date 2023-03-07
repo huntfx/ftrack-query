@@ -146,6 +146,7 @@ class Comparison(AbstractComparison):
         of possible values.
         """
         # Unpack generators
+        # TODO: Can this be done in Comparison.parser?
         if len(args) == 1 and isinstance(args[0], GeneratorType):
             args = tuple(args[0])
 

@@ -1,4 +1,5 @@
 import logging
+from types import GeneratorType
 
 import ftrack_api
 
@@ -127,6 +128,10 @@ class AbstractComparison(object):
 
             elif isinstance(arg, ftrack_api.entity.base.Entity):
                 raise TypeError('keyword required for {}'.format(arg))
+
+            elif isinstance(arg, GeneratorType) and len(args) == 1:
+                for item in arg:
+                    yield item
 
             # The object is likely a comparison object, so convert to str
             # If an actual string is input, then assume it's valid syntax
