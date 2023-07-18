@@ -4,27 +4,11 @@ from types import GeneratorType
 import ftrack_api
 
 
-logger = logging.getLogger('ftrack-query')
-
-
-class AbstractQuery(object):
-    """Base class to use mainly for inheritance checks."""
-
-    def __init__(self):
-        self._where = []
-
-
-class AbstractComparison(object):
-    """Class to generate query comparisons."""
+class Comparison(object):
+    """Abstract class to generate query comparisons."""
 
     def __init__(self, value):
         self.value = value
-
-    def __getattr__(self, attr):
-        """Get sub-attributes of the entity attributes.
-        Example: session.Entity.attr.<subattr>.<subattr>...
-        """
-        return self.__class__(self.value+'.'+attr)
 
     def __repr__(self):
         return '{}({!r})>'.format(self.__class__.__name__, self.value)
@@ -69,16 +53,6 @@ class AbstractComparison(object):
 
         return self.__class__('not ({})'.format(self.value))
 
-    def __call__(self, *args, **kwargs):
-        """Setup calls as aliases to equals.
-        >>> entity.value('x') == (entity.value == 'x')
-
-        The old error has been left commented out in case it needs to
-        be re-added for certain cases in the future.
-        """
-        return self.__eq__(*args, **kwargs)
-        # raise TypeError("'{}' object is not callable".format(self.__class__.__name__))
-
     def __contains__(self, value):
         """Disable the use of `x in obj`, since it can only return a boolean."""
         raise TypeError("'in' cannot be overloaded")
@@ -115,14 +89,16 @@ class AbstractComparison(object):
 
         kwargs:
             Search for attributes of an entity.
-            `(x=y)` is the equivelant of `(entity.x == y)`.
+            `(x=y)` is the equivelant of `(attr('x') == y)`.
+
+        Raises:
+            TypeError: If entity is given with no keyword.
+
+        Returns:
+            List of Comparison objects or strings.
         """
         for arg in args:
-            if isinstance(arg, AbstractQuery):
-                for item in arg._where:
-                    yield item
-
-            elif isinstance(arg, dict):
+            if isinstance(arg, dict):
                 for key, value in arg.items():
                     yield cls(key) == value
 
@@ -139,13 +115,4 @@ class AbstractComparison(object):
                 yield arg
 
         for key, value in kwargs.items():
-            if isinstance(value, AbstractQuery):
-                for item in value._where:
-                    yield item
-
-            else:
-                yield cls(key) == value
-
-
-class AbstractStatement(object):
-    """Class to use for inheritance checks."""
+            yield cls(key) == value

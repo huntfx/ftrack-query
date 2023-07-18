@@ -7,33 +7,83 @@ It's designed to hide the SQL-like syntax in favour of an object
 orientated approach. Inspiration was taken from SQLALchemy.
 """
 
-__all__ = ['FTrackQuery', 'exception', 'entity', 'and_', 'or_', 'not_', 'event',
+__all__ = ['FTrackQuery', 'exception', 'and_', 'or_', 'not_',
            'select', 'create', 'update', 'delete', 'attr']
 
-__version__ = '1.8.4'
+__version__ = '2.0.0'
 
+import logging
 import os
 
 import ftrack_api
 
 from . import exception, utils
-from .abstract import AbstractStatement
-from .query import Query, entity, and_, or_, not_
-from .event import event
-from .statement import attr, select, create, update, delete
+from .query import Select, Create, Update, Delete
+from .query import attr, and_, or_, not_
 from .utils import copy_doc
+
+
+def select(entity_type):
+    """Generate a select statement.
+
+    Returns:
+        QueryResult object.
+
+    Example:
+        >>> stmt = select('Task').where(name='Test').populate('type_id', 'status.name').limit(2)
+        >>> str(stmt)
+        'select type_id, status.name from Task where x is 5 limit 2'
+
+        >>> session.execute(stmt).one()
+        <Task>
+    """
+    return Select(entity_type)
+
+
+def create(entity_type):
+    """Generate a create statement.
+
+    Returns:
+        >>> stmt = create('Task').values(name='Test', parent_id=123)
+        >>> session.execute(stmt)
+        <Task>
+    """
+    return Create(entity_type)
+
+
+def update(entity_type):
+    """Generate an update statement.
+
+    Example:
+        >>> stmt = update('Task').where(name='Test').order_by('id desc').limit(1)
+        >>> session.execute(stmt)
+        1
+    """
+    return Update(entity_type)
+
+
+def delete(entity_type):
+    """Generate a delete statement.
+
+    Example:
+        >>> stmt = delete('Task').where(name='Test').order_by('id desc').limit(1)
+        >>> session.execute(stmt)
+        1
+    """
+    return Delete(entity_type)
 
 
 class FTrackQuery(ftrack_api.Session):
     # pylint: disable=arguments-differ
     """Expansion of the ftrack_api.Session class."""
 
-    def __init__(self, page_size=None, logger=utils.logger, debug=False, **kwargs):
+    def __init__(self, page_size=None, logger=None, debug=False, **kwargs):
         """Attempt to initialise the connection.
         If the debug argument is set, the connection will be ignored.
         """
         self.debug = debug
 
+        # Override page size
         if page_size is None:
             try:
                 page_size = int(os.environ.get('FTRACK_API_PAGE_SIZE', 0)) or None
@@ -41,44 +91,30 @@ class FTrackQuery(ftrack_api.Session):
                 pass
         self.page_size = page_size
 
-        self._logger = logger
-        self._logger.debug('Connecting...')
-
+        # Initialise session
         if not self.debug:
             super(FTrackQuery, self).__init__(**kwargs)
-        self._logger.debug('New session initialised.')
 
-    def __getattribute__(self, attr):
-        """Get an entity type if it exists.
-        The standard AttributeError will be raised if not.
-        """
-        try:
-            return super(FTrackQuery, self).__getattribute__(attr)
-        except AttributeError:
-            if self.debug or attr in super(FTrackQuery, self).__getattribute__('types'):
-                return Query(self, attr)
-            raise
+        # Setup logger
+        elif logger is None:
+            self.logger = logging.getLogger(
+                ftrack_api.Session.__module__ + '.' + type(self).__name__
+            )
+        if logger is not None:
+            self.logger = logger
+        self.logger.info('New session initialised.')
 
     def close(self, *args, **kwargs):
         """Avoid error when closing session in debug mode."""
         if not self.debug:
             return super(FTrackQuery, self).close(*args, **kwargs)
 
-    def get(self, value, _value=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
-        """Get any entity from its ID.
-        The _value argument is for compatibility with ftrack_api.Session.
-        """
-        if _value is None:
-            entity = 'Context'
-        else:
-            entity, value = value, _value
-        self._logger.debug('Get: %s(%r)', entity, value)
-        return super(FTrackQuery, self).get(entity, value, *args, **kwargs)
-
     def query(self, query, page_size=None, **kwargs):
-        """Create an FTrack query object from a string."""
+        """Query FTrack for data.
+        This method override adds support for setting page size.
+        """
         query = str(query)
-        self._logger.debug('Query: %s', query)
+        self.logger.info('Query: %s', query)
 
         # Set page size
         page_size = page_size or self.page_size
@@ -87,44 +123,50 @@ class FTrackQuery(ftrack_api.Session):
 
         return super(FTrackQuery, self).query(query, **kwargs)
 
+    @copy_doc(ftrack_api.Session.create)
     def create(self, entity, data, *args, **kwargs):
         """Create a new entity."""
         if not kwargs.get('reconstructing', False):
-            self._logger.debug('Create: %s(%s)', entity, utils.dict_to_str(data))
+            self.logger.info('Create: %s(%s)', entity, utils.dict_to_str(data))
         return super(FTrackQuery, self).create(entity, data, *args, **kwargs)
 
+    @copy_doc(ftrack_api.Session.delete)
     def delete(self, entity, *args, **kwargs):
-        """Delete an FTrack entity."""
-        self._logger.debug('Delete: %r', entity)
+        """Delete an entity."""
+        self.logger.info('Delete: %r', entity)
         return super(FTrackQuery, self).delete(entity, *args, **kwargs)
 
-    def where(self, *args, **kwargs):
-        """Set entity type as TypedContext if none provided."""
-        return self.TypedContext.where(*args, **kwargs)
-
+    @copy_doc(ftrack_api.Session.commit)
     def commit(self, *args, **kwargs):
         """Commit changes."""
-        self._logger.debug('Changes saved.')
+        self.logger.info('Changes saved.')
         return super(FTrackQuery, self).commit(*args, **kwargs)
 
+    @copy_doc(ftrack_api.Session.rollback)
     def rollback(self, *args, **kwargs):
         """Rollback changes."""
-        self._logger.debug('Changes discarded.')
+        self.logger.info('Changes discarded.')
         return super(FTrackQuery, self).rollback(*args, **kwargs)
 
+    @copy_doc(ftrack_api.Session.populate)
     def populate(self, entities, projections):
-        """Populate new values."""
+        """Populate query with new values."""
         if isinstance(projections, (list, tuple, set)):
             projections = ','.join(map(str, projections))
         return super(FTrackQuery, self).populate(entities, projections)
 
     def execute(self, stmt):
-        """Execute a statement."""
-        if isinstance(stmt, AbstractStatement):
-            return stmt.options(session=self).execute()
-        raise NotImplementedError(type(stmt))
+        """Execute a statement.
+
+        Returns:
+            QueryResult object if a select statement.
+            Created entity if a create statement.
+            Number of entities updated if an update statement.
+            Number of entities deleted if a delete statement.
+        """
+        return stmt.options(session=self).execute()
 
     @copy_doc(select)
     def select(self, *items):
         """Generate a select statement with the session attached."""
-        return select(*items).options(session=self)
+        return select(*items).options(session=self, page_size=self.page_size)

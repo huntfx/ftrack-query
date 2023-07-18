@@ -1,10 +1,23 @@
+"""Simple wrapper over the FTrack event API.
+
+Example:
+    >>> from ftrack_query import event
+    >>> session.event_hub.subscribe(str(
+    ...     event.and_(
+    ...         event.topic('ftrack.update'),
+    ...         event.data.user.name!=getuser(),
+    ...     )
+    ... ))
+    >>> session.event_hub.wait()
+"""
+
 __all__ = ['event', 'and_', 'or_', 'not_']
 
-from .abstract import AbstractComparison
-from .utils import Join, parse_operators, not_
+from . import abstract
+from .utils import Join, parse_operators
 
 
-class Comparison(AbstractComparison):
+class Comparison(abstract.Comparison):
     # pylint: disable=unexpected-special-method-signature
     """Comparisons for the event syntax."""
 
@@ -39,55 +52,13 @@ class Comparison(AbstractComparison):
         return self.__class__('{}<={}'.format(base, value))
 
 
-class Event(object):
-    """Create a class to mimic event.py.
-
-    The purpose of this is to allow both both imports and getattr.
-
-    # Importing from module
-    >>> from ftrack_query.event import *
-    >>> and_(event.a=='b', event.x=='y')
-
-    # Importing module directly
-    >>> from ftrack_query import event
-    >>> event.and_(event.a=='b', event.x=='y')
-
-    Example:
-        >>> event = Event()
-        >>> session.event_hub.subscribe(str(
-        ...     event.and_(
-        ...         event.topic('ftrack.update'),
-        ...         event.data.user.name!=getuser(),
-        ...     )
-        ... ))
-        >>> session.event_hub.wait()
-    """
-
-    @staticmethod
-    def and_(*args, **kwargs):
-        """Quick access to the and_ function."""
-        return and_(*args, **kwargs)
-
-    @staticmethod
-    def or_(*args, **kwargs):
-        """Quick access to the or_ function."""
-        return or_(*args, **kwargs)
-
-    @staticmethod
-    def not_(*args, **kwargs):
-        """Quick access to the not_ function."""
-        return not_(*args, **kwargs)
-
-    @staticmethod
-    def __getattr__(attr):
-        """Get an event attribute to use for comparisons.
-        Example: event.<attr>
-        """
-        return Comparison(attr)
+def not_(*args, **kwargs):
+    """Reverse a comparison object."""
+    return ~or_(Comparison.parser(*args, **kwargs))
 
 
-and_ = Join('and', brackets=False, compare=Comparison)
+and_ = Join(Comparison, 'and', brackets=False)
 
-or_ = Join('or', brackets=True, compare=Comparison)
+or_ = Join(Comparison, 'or', brackets=True)
 
-event = Event()
+attr = Comparison
