@@ -1,11 +1,13 @@
-import logging
+from collections import defaultdict
 from types import GeneratorType
 
 import ftrack_api
 
 
 class Comparison(object):
-    """Abstract class to generate query comparisons."""
+    """Abstract class for attribute comparisons."""
+
+    Operators = defaultdict(dict)
 
     def __init__(self, value):
         self.value = value
@@ -66,8 +68,52 @@ class Comparison(object):
         return self.__ne__(*args, **kwargs)
 
     @classmethod
+    def register_operator(cls, operator, brackets):
+        """Create a new operator such as "and"/"or".
+
+        Parameters:
+            operator (str): What to use as the joining string.
+                "and" and "or" are examples.
+            brackets (bool): If multiple values need to be parenthesized.
+            parse (function): Parse *args and **kwargs to return a list.
+        """
+        def fn(*args, **kwargs):
+            """Create a comparison object containing all the inputs."""
+            args = (arg for arg in args if arg is not None)
+            query_parts = list(cls.parser(*args, **kwargs))
+            query = ' {} '.format(operator).join(map(str, query_parts))
+            if brackets and len(query_parts) > 1:
+                return cls('({})'.format(query))
+            return cls(query)
+        cls.Operators[cls][operator] = fn
+        return fn
+
+    @classmethod
+    def operator(cls, operator):
+        try:
+            return cls.Operators[cls][operator]
+        except KeyError:
+            raise AttributeError('no operator named "{}"'.format(operator))
+
+    def __and__(self, other):
+        """Join two comparisons."""
+        return self.operator('and')(self, other)
+
+    def __rand__(self, other):
+        """Join two comparisons."""
+        return self.operator('and')(other, self)
+
+    def __or__(self, other):
+        """Join two comparisons."""
+        return self.operator('or')(self, other)
+
+    def __ror__(self, other):
+        """Join two comparisons."""
+        return self.operator('or')(other, self)
+
+    @classmethod
     def parser(cls, *args, **kwargs):
-        """Convert multiple inputs into Comparison objects.
+        """Convert multiple inputs into `Comparison` objects.
         Different types of arguments are allowed.
 
         args:
@@ -84,18 +130,16 @@ class Comparison(object):
                 relied upon when building the query.
 
             Anything else passed in will get converted to strings.
-            The comparison class has been designed to evaluate when
-            to_str() is called, but any custom class could be used.
 
         kwargs:
             Search for attributes of an entity.
-            `(x=y)` is the equivelant of `(attr('x') == y)`.
+            `x=y` is the equivalent of `Comparison('x') == y`.
 
         Raises:
             TypeError: If entity is given with no keyword.
 
         Returns:
-            List of Comparison objects or strings.
+            List of `Comparison` objects or strings.
         """
         for arg in args:
             if isinstance(arg, dict):
@@ -109,8 +153,8 @@ class Comparison(object):
                 for item in arg:
                     yield item
 
-            # The object is likely a comparison object, so convert to str
-            # If an actual string is input, then assume it's valid syntax
+            # The object is likely a `Comparison` object at this point
+            # If anything else is input, then assume it's valid syntax
             else:
                 yield arg
 

@@ -121,6 +121,15 @@ class TestAttr(unittest.TestCase):
         self.assertEqual(str(attr('parent.name').startswith('%abc%')), 'parent.name like "\\%abc\\%%"')
         self.assertEqual(str(attr('parent.name').endswith('%abc%')), 'parent.name like "%\\%abc\\%"')
 
+    def test_operators(self):
+        left = attr('x') == 1
+        right = attr('y') == 2
+        self.assertEqual(left & right, 'x is 1 and y is 2')
+        self.assertEqual(left | right, '(x is 1 or y is 2)')
+        self.assertEqual(left & right, and_(left, right))
+        self.assertEqual(left & str(right), and_(left, right))
+        self.assertEqual(str(left) & right, and_(left, right))
+
 
 class TestSelect(unittest.TestCase):
 

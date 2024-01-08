@@ -26,7 +26,7 @@ from ftrack_api.symbol import NOT_SET
 
 from . import abstract
 from .exception import UnboundSessionError
-from .utils import Join, clone_instance, convert_output_value, parse_operators, dict_to_str
+from .utils import clone_instance, convert_output_value, parse_operators, dict_to_str
 
 
 class Comparison(abstract.Comparison):
@@ -104,13 +104,11 @@ class Comparison(abstract.Comparison):
 
     def has(self, *args, **kwargs):
         """Test a scalar relationship for values."""
-        where = Comparison.parser(*args, **kwargs)
-        return self.__class__('{} has ({})'.format(self.value, and_(*where)))
+        return self.__class__('{} has ({})'.format(self.value, and_(*args, **kwargs)))
 
     def any(self, *args, **kwargs):
         """Test a collection relationship for values."""
-        where = Comparison.parser(*args, **kwargs)
-        return self.__class__('{} any ({})'.format(self.value, and_(*where)))
+        return self.__class__('{} any ({})'.format(self.value, and_(*args, **kwargs)))
 
     def _prepare_in_subquery(self, *args):
         """Prepare the subquery text for "in" or "not_in".
@@ -325,7 +323,7 @@ class Select(SessionInstance):
     @clone_instance
     def where(self, *args, **kwargs):
         """Filter the result."""
-        self._where += list(Comparison.parser(*args, **kwargs))
+        self._where.append(and_(*args, **kwargs))
         return self
 
     @clone_instance
@@ -594,11 +592,11 @@ class Delete(Select):
 
 def not_(*args, **kwargs):
     """Reverse a comparison object."""
-    return ~or_(Comparison.parser(*args, **kwargs))
+    return ~or_(*args, **kwargs)
 
 
-and_ = Join(Comparison, 'and', brackets=False)
+and_ = Comparison.register_operator('and', brackets=False)
 
-or_ = Join(Comparison, 'or', brackets=True)
+or_ = Comparison.register_operator('or', brackets=True)
 
 attr = Comparison

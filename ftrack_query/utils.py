@@ -50,34 +50,6 @@ def convert_output_value(value):
     return '"' + str(value).replace('"', r'\"') + '"'
 
 
-class Join(object):
-    """Convert multiple arguments into a valid query.
-
-    Parameters:
-        comparison (Comparison): Comparison class to generate.
-        operator (str): What to use as the joining string.
-            "and" and "or" are examples.
-        brackets (bool): If multiple values need to be parenthesized.
-        parse (function): Parse *args and **kwargs to return a list.
-    """
-
-    __slots__ = ('operator', 'brackets', 'comparison')
-
-    def __init__(self, comparison, operator, brackets):
-        self.comparison = comparison
-        self.operator = operator
-        self.brackets = brackets
-
-    def __call__(self, *args, **kwargs):
-        """Create a comparison object containing all the inputs."""
-        args = (arg for arg in args if arg is not None)
-        query_parts = list(self.comparison.parser(*args, **kwargs))
-        query = ' {} '.format(self.operator).join(map(str, query_parts))
-        if self.brackets and len(query_parts) > 1:
-            return self.comparison('({})'.format(query))
-        return self.comparison(query)
-
-
 def copy_doc(from_fn):
     """Copy a docstring from one function to another."""
     def decorator(to_fn):

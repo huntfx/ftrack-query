@@ -14,7 +14,7 @@ Example:
 __all__ = ['event', 'and_', 'or_', 'not_']
 
 from . import abstract
-from .utils import Join, parse_operators
+from .utils import parse_operators
 
 
 class Comparison(abstract.Comparison):
@@ -54,11 +54,11 @@ class Comparison(abstract.Comparison):
 
 def not_(*args, **kwargs):
     """Reverse a comparison object."""
-    return ~or_(Comparison.parser(*args, **kwargs))
+    return ~or_(*args, **kwargs)
 
 
-and_ = Join(Comparison, 'and', brackets=False)
+and_ = Comparison.register_operator('and', brackets=False)
 
-or_ = Join(Comparison, 'or', brackets=True)
+or_ = Comparison.register_operator('or', brackets=True)
 
 attr = Comparison
