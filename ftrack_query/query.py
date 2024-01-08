@@ -28,6 +28,8 @@ from . import abstract
 from .exception import UnboundSessionError
 from .utils import clone_instance, convert_output_value, parse_operators, dict_to_str
 
+if str is not bytes: unicode = str
+
 
 class Comparison(abstract.Comparison):
     # pylint: disable=unexpected-special-method-signature
@@ -110,7 +112,7 @@ class Comparison(abstract.Comparison):
         """Test a collection relationship for values."""
         return self.__class__('{} any ({})'.format(self.value, and_(*args, **kwargs)))
 
-    def _prepare_in_subquery(self, *args):
+    def _prepare_in_subquery(self, values=None):
         """Prepare the subquery text for "in" or "not_in".
         This supports both subqueries (x in (select y from z)), and
         multiple items (x in ("y", "z")).
@@ -119,54 +121,44 @@ class Comparison(abstract.Comparison):
         of possible values.
         """
         # Unpack generators
-        # TODO: Can this be done in Comparison.parser?
-        if len(args) == 1 and isinstance(args[0], GeneratorType):
-            args = tuple(args[0])
+        if values and isinstance(values, GeneratorType):
+            values = list(values)
 
-        if not args:
+        if not values:
             return convert_output_value('')
 
         # Args were given as a built query
         # If a single query, then a subquery will work as long as a select is done
-        # If multiple queries, then raise an error
-        if len(args) == 1 and isinstance(args[0], Select):
-            args = [str(args[0].subquery())]
+        if isinstance(values, Select):
+            return str(values.subquery())
 
-        elif isinstance(args[0], Select):
-            raise ValueError('unable to check against multiple subqueries')
+        # Allow subqueries to be manually written
+        if isinstance(values, (str, unicode)):
+            return values
 
-        # Args contain FTrack entities
-        elif any(isinstance(arg, ftrack_api.entity.base.Entity) for arg in args):
+        # Handle FTrack entity instances
+        ftrack_entities = [isinstance(value, ftrack_api.entity.base.Entity) for value in values]
+        if all(ftrack_entities):
             self.value += '.id'
-            return ', '.join(convert_output_value(entity['id'] if isinstance(entity, ftrack_api.entity.base.Entity) else entity)
-                             for entity in args)
+            return ', '.join(convert_output_value(entity['id']) for entity in values)
+        elif any(ftrack_entities):
+            raise ValueError('values cannot be a mix of types when entities are used')
 
-        # Args were given as a list
-        subquery = None
-        try:
-            # Allow subqueries to be manually written
-            if len(args) == 1 and args[0].startswith('select ') and ' from ' in args[0]:
-                subquery = args[0]
-        except AttributeError:
-            pass
-        # Correctly format the values based on their type
-        if subquery is None:
-            subquery = ', '.join(map(convert_output_value, args))
+        # Correctly format a list of arguments based on their type
+        return ', '.join(map(convert_output_value, values))
 
-        return subquery
-
-    def in_(self, *args):
+    def in_(self, values=None):
         """One of these values.
         See _prepare_in_subquery() for implementation details.
         """
-        subquery = self._prepare_in_subquery(*args)
+        subquery = self._prepare_in_subquery(values)
         return self.__class__('{} in ({})'.format(self.value, subquery))
 
-    def not_in(self, *args):
+    def not_in(self, values=None):
         """Not one of these values.
         See _prepare_in_subquery() for implementation details.
         """
-        subquery = self._prepare_in_subquery(*args)
+        subquery = self._prepare_in_subquery(values)
         return self.__class__('{} not_in ({})'.format(self.value, subquery))
 
     def startswith(self, value):
@@ -328,7 +320,7 @@ class Select(SessionInstance):
 
     @clone_instance
     def populate(self, *args):
-        """Prefetch attributes with the query."""
+        """Prefetch attributes as part of the query."""
         # Allow empty string or None without breaking
         try:
             if not args[0] and len(args) == 1:
@@ -340,24 +332,24 @@ class Select(SessionInstance):
         return self
 
     @clone_instance
-    def sort(self, attribute=None):
+    def sort(self, attr=None):
         """Sort the query results."""
         desc = False
 
         # Grab the sorting method from the string if provided
-        if attribute is not None:
-            attribute = str(attribute)
-            if ' ' in attribute:
-                attribute, method = attribute.split(' ')
+        if attr is not None:
+            attr = str(attr)
+            if ' ' in attr:
+                attr, method = attr.split(' ')
                 if method in ('desc', 'descending'):
                     desc = True
                 elif method not in ('asc', 'ascending'):
                     raise NotImplementedError('unknown sorting method: {!r}'.format(method))
 
-        if attribute is None:
+        if attr is None:
             self._sort = []
         else:
-            self._sort.append((attribute, desc))
+            self._sort.append((attr, desc))
         return self
     order = order_by = sort
 

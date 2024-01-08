@@ -47,7 +47,7 @@ class TestAttr(unittest.TestCase):
         self.assertEqual(str(attr('date').after(arrow.get(0))), 'date after "1970-01-01T00:00:00+00:00"')
 
     def test_in_values(self):
-        self.assertEqual(str(attr('id').in_(123, 'abc')), 'id in (123, "abc")')
+        self.assertEqual(str(attr('id').in_([123, 'abc'])), 'id in (123, "abc")')
 
     def test_in_generator(self):
         self.assertEqual(str(attr('id').in_(i for i in range(5))), 'id in (0, 1, 2, 3, 4)')
@@ -56,13 +56,13 @@ class TestAttr(unittest.TestCase):
     def test_in_empty(self):
         self.assertEqual(str(attr('id').in_(i for i in ())), 'id in ("")')
         self.assertEqual(str(attr('id').in_()), 'id in ("")')
+        self.assertEqual(str(attr('id').in_(None)), 'id in ("")')
+        self.assertEqual(str(attr('id').in_([None])), 'id in (none)')
 
     def test_in_subquery(self):
         subquery = select('Task').where(name='abc')
         self.assertEqual(str(attr('id').in_(subquery)), 'id in (select id from Task where name is "abc")')
         self.assertEqual(str(attr('id').not_in(subquery)), 'id not_in (select id from Task where name is "abc")')
-        with self.assertRaises(ValueError):
-            attr('id').in_(subquery, subquery)
 
         subquery = subquery.populate('name')
         self.assertEqual(str(attr('id').in_(subquery)), 'id in (select name from Task where name is "abc")')
@@ -75,22 +75,23 @@ class TestAttr(unittest.TestCase):
         import ftrack_api
         class Entity(ftrack_api.entity.base.Entity):
             """Recreation of the entity class to not require a session."""
+            attributes = {}
             def __init__(self): pass
             def __repr__(self): return "<dynamic ftrack class 'Entity'>"
             def __getitem__(self, item): return '123'
             def __str__(self): return '<Entity(00000000-0000-0000-0000-000000000000)>'
 
-        self.assertEqual(str(attr('parent').in_(Entity())), 'parent.id in ("123")')
-        self.assertEqual(str(attr('parent').in_(Entity(), Entity())), 'parent.id in ("123", "123")')
-        self.assertEqual(str(attr('parent').in_(Entity(), 123)), 'parent.id in ("123", 123)')
+        self.assertEqual(str(attr('parent').in_([Entity()])), 'parent.id in ("123")')
+        self.assertEqual(str(attr('parent').in_([Entity(), Entity()])), 'parent.id in ("123", "123")')
+        with self.assertRaises(ValueError):
+            attr('parent').in_([Entity(), 123])
 
     def test_in_unsupported_type(self):
-        self.assertEqual(str(attr('id').in_([123, 'abc'])), 'id in ("[123, \'abc\']")')
-        self.assertEqual(str(attr('id').in_([123, 'abc'], [456, 'def'])), 'id in ("[123, \'abc\']", "[456, \'def\']")')
+        self.assertEqual(str(attr('id').in_([[123, 'abc'], [456, 'def']])), 'id in ("[123, \'abc\']", "[456, \'def\']")')
         class InTest(object):
             def __str__(self): return 'test'
-        self.assertEqual(str(attr('id').in_(InTest(), 1j+1)), 'id in ("test", "(1+1j)")')
-        self.assertRegex(str(attr('id').in_((i for i in range(5)), (i for i in range(5)))),
+        self.assertEqual(str(attr('id').in_([InTest(), 1j+1])), 'id in ("test", "(1+1j)")')
+        self.assertRegex(str(attr('id').in_([(i for i in range(5)), (i for i in range(5))])),
                          r'id in \("<.* at 0x[0-9A-F]+>", "<.* at 0x[0-9A-F]+>"\)')
 
     def test_join(self):
@@ -99,7 +100,7 @@ class TestAttr(unittest.TestCase):
         self.assertEqual(str(attr('parent').has(attr('parent.name') == 'abc', name='def')), 'parent has (parent.name is "abc" and name is "def")')
         self.assertEqual(str(attr('parent').has(and_(attr('parent.name') == 'abc', name='def'))), 'parent has (parent.name is "abc" and name is "def")')
         self.assertEqual(str(attr('parent').has(or_(attr('parent.name') == 'abc', name='def'))), 'parent has ((parent.name is "abc" or name is "def"))')
-        self.assertEqual(str(attr('children').any(or_(attr('name').in_('a', 'b', 'c'), name='def'))), 'children any ((name in ("a", "b", "c") or name is "def"))')
+        self.assertEqual(str(attr('children').any(or_(attr('name').in_(['a', 'b', 'c']), name='def'))), 'children any ((name in ("a", "b", "c") or name is "def"))')
         self.assertEqual(str(attr('children').any(or_(attr('name') == 'a', attr('name') == 'b'), or_(attr('name') == 'c', attr('name') == 'd'))), 'children any ((name is "a" or name is "b") and (name is "c" or name is "d"))')
 
     def test_invert(self):
@@ -107,7 +108,7 @@ class TestAttr(unittest.TestCase):
         self.assertEqual(str(not_(attr('version') == 5)), 'not version is 5')
         self.assertEqual(str(not_(attr('version') == 5, version=6)), 'not (version is 5 or version is 6)')
         self.assertEqual(str(~attr('version') > 5), 'not version > 5')
-        self.assertEqual(str(~attr('id').in_(123, 'abc')), 'not id in (123, "abc")')
+        self.assertEqual(str(~attr('id').in_([123, 'abc'])), 'not id in (123, "abc")')
         self.assertEqual(str(~attr('parent.name').endswith('abc')), 'not parent.name like "%abc"')
         self.assertEqual(str(~attr('parent').has(name='abc')), 'not parent has (name is "abc")')
         self.assertEqual(str(~or_(attr('version') > 3, version=1)), 'not (version > 3 or version is 1)')
