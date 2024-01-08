@@ -132,13 +132,7 @@ class Comparison(abstract.Comparison):
         # If a single query, then a subquery will work as long as a select is done
         # If multiple queries, then raise an error
         if len(args) == 1 and isinstance(args[0], Select):
-            subquery = args[0]
-
-            # Ensure the query has a projection, because "select from" is required
-            if not subquery._populate:
-                subquery = subquery.populate('id')
-
-            args = [str(subquery)]
+            args = [str(args[0].subquery())]
 
         elif isinstance(args[0], Select):
             raise ValueError('unable to check against multiple subqueries')
@@ -402,6 +396,16 @@ class Select(SessionInstance):
         if page_size is not NOT_SET:
             self._page_size = page_size
         return super(Select, self).options(**kwargs)
+
+    @clone_instance
+    def subquery(self, attribute=None):
+        """Convert the query to a subquery.
+        This is to ensure there's always a `select from` included in
+        the statement.
+        """
+        if attribute is not None or not self._populate:
+            self._populate[:] = [attribute or 'id']
+        return self
 
 
 class Create(SessionInstance):
