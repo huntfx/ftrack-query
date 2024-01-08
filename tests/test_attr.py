@@ -266,19 +266,5 @@ class TestDelete(unittest.TestCase):
         self.assertFalse(delete_option2._remove_components)
 
 
-class TestEvent(unittest.TestCase):
-
-    def test_all(self):
-        self.assertEqual(str(event.attr('topic') == 'ftrack.update'), 'topic="ftrack.update"')
-        self.assertEqual(str(event.and_(event.attr('topic') == 'ftrack.update', event.attr('source.user.username') == 'user')), 'topic="ftrack.update" and source.user.username="user"')
-        self.assertEqual(str(event.or_(event.attr('topic') != 'ftrack.update', event.attr('source.user.username') == 'user')), '(topic!="ftrack.update" or source.user.username="user")')
-
-    def test_types(self):
-        self.assertEqual(str(event.attr('x') == 2), 'x=2')
-        class Test(object):
-            def __str__(self): return 'test'
-        self.assertEqual(str(event.attr('x') == Test()), 'x="test"')
-
-
 if __name__ == '__main__':
     unittest.main()

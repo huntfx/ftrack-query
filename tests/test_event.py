@@ -38,6 +38,12 @@ class TestComparison(unittest.TestCase):
         self.assertEqual(str(attr('a') == ''), 'a=""')
         self.assertEqual(str(attr('a') == None), 'a=none')
 
+    def test_types(self):
+        self.assertEqual(str(attr('x') == 2), 'x=2')
+        class Test(object):
+            def __str__(self): return 'test'
+        self.assertEqual(str(attr('x') == Test()), 'x="test"')
+
 
 if __name__ == '__main__':
     unittest.main()
