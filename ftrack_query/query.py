@@ -125,41 +125,40 @@ class Comparison(abstract.Comparison):
             values = list(values)
 
         if not values:
-            return convert_output_value('')
+            return '', convert_output_value('')
 
         # Args were given as a built query
         # If a single query, then a subquery will work as long as a select is done
         if isinstance(values, Select):
-            return str(values.subquery())
+            return '', str(values.subquery())
 
         # Allow subqueries to be manually written
         if isinstance(values, (str, unicode)):
-            return values
+            return '', values
 
         # Handle FTrack entity instances
         ftrack_entities = [isinstance(value, ftrack_api.entity.base.Entity) for value in values]
         if all(ftrack_entities):
-            self.value += '.id'
-            return ', '.join(convert_output_value(entity['id']) for entity in values)
+            return '.id', ', '.join(convert_output_value(entity['id']) for entity in values)
         elif any(ftrack_entities):
             raise ValueError('values cannot be a mix of types when entities are used')
 
         # Correctly format a list of arguments based on their type
-        return ', '.join(map(convert_output_value, values))
+        return '', ', '.join(map(convert_output_value, values))
 
     def in_(self, values=None):
         """One of these values.
         See _prepare_in_subquery() for implementation details.
         """
-        subquery = self._prepare_in_subquery(values)
-        return self.__class__('{} in ({})'.format(self.value, subquery))
+        attr, subquery = self._prepare_in_subquery(values)
+        return self.__class__('{}{} in ({})'.format(self.value, attr, subquery))
 
     def not_in(self, values=None):
         """Not one of these values.
         See _prepare_in_subquery() for implementation details.
         """
-        subquery = self._prepare_in_subquery(values)
-        return self.__class__('{} not_in ({})'.format(self.value, subquery))
+        attr, subquery = self._prepare_in_subquery(values)
+        return self.__class__('{}{} not_in ({})'.format(self.value, attr, subquery))
 
     def startswith(self, value):
         """If a value starts with this."""

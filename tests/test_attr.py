@@ -86,6 +86,10 @@ class TestAttr(unittest.TestCase):
         with self.assertRaises(ValueError):
             attr('parent').in_([Entity(), 123])
 
+        a = attr('parent')
+        a.in_([Entity()])
+        self.assertEqual(str(a), 'parent')
+
     def test_in_unsupported_type(self):
         self.assertEqual(str(attr('id').in_([[123, 'abc'], [456, 'def']])), 'id in ("[123, \'abc\']", "[456, \'def\']")')
         class InTest(object):
