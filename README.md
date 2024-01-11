@@ -132,7 +132,20 @@ Note that `attr()`, `and_()`, and `or_()` are present in both `ftrack_query` and
 # API Reference
 
 ## ftrack_query.FTrackQuery
-Main class inherited from `ftrack_api.Session`.
+Main session inherited from `ftrack_api.Session`.
+
+
+## ftrack_query.and\_(_\*args, \*\*kwargs_) | ftrack_query.or\_(_\*args, \*\*kwargs_)
+Join multiple comparisons.
+
+Shortcuts are provided with `&` and `|` (_eg. `(attr(a) == b) & attr(x) == y`_).
+
+
+## ftrack_query.not\_(_\*args, \*\*kwargs_)
+Reverse the input comparisons.
+
+A shortcut is provided with `~` (_eg. `~attr(x) == y`_).
+
 
 ## ftrack_query.select
 Used for building the query string.
@@ -149,17 +162,18 @@ Calling `session.execute(stmt)` will execute the query and return FTrack's own `
 Filter the result.
 
 Using keywords is the fastest way, such as `.where(first_name='Peter', last_name='Hunt')`.
-However `attr()` is required for relationship queries, or anything other than eqality checks, such as `.where(attr('project.metadata').any(attr('key') != 'disabled'))`.
+For anything more complex than equality checks, using `attr()` is recommended, such as `.where(attr('project.metadata').any(attr('key') != 'disabled'))`.
 
 ### populate(_\*attrs_)
 Pre-fetch entity attributes.
 
-An an example, in order to iterate through the name of every user, it would be a good idea to load `first_name` and `last_name` as part of the query. Without that, it would take 2 separate queries _per user_, which is known as the [N+1 query problem](https://stackoverflow.com/questions/97197/what-is-the-n1-selects-problem-in-orm-object-relational-mapping).
+An an example, in order to iterate through the name of every user, it would be a good idea to call `.populate('first_name', 'last_name')` as part of the query. Without that, it would take 2 separate queries per user, which is known as the [N+1 query problem](https://stackoverflow.com/questions/97197/what-is-the-n1-selects-problem-in-orm-object-relational-mapping).
 
-### order_by(_\*attrs_) | order(_\*attrs_) | order(_\*attrs_)
+### order_by(_\*attrs_) | order(_\*attrs_) | sort(_\*attrs_)
 Sort the results by an attribute.
 
 The attribute and order can be given in the format `attr('name').desc()`, or as a raw string such as `name descending`.
+The order will default to `ascending` if not provided.
 
 ### reverse()
 Reverse the sorting direction.
@@ -167,18 +181,19 @@ Reverse the sorting direction.
 ### limit(_value_)
 Limit the amount of results to a certain value.
 
-Note: This is not compatible with calling `.first()` or `.one()`, as FTrack applies their own limit automatically.
+Note: This is incompatible with calling `.first()` or `.one()`.
 
 ### offset(_value_)
 In the case of using a limit, apply an offset to the result that is returned.
 
 ### options(_\*\*kwargs_)
 For advanced users only.
-`page_size`: Set the number of results to be fetched at once from FTrack.
-`session`: Attach a session object to the query.
+- `page_size`: Set the number of results to be fetched at once from FTrack.
+- `session`: Attach a session object to the query.
 
 ### subquery(_attribute='id'_)
 Make the statement a subquery for use within `.in_()`.
+
 This ensures there's always a "select from" as part of the statement.
 Manually setting the attribute parameter will override any existing projections.
 
@@ -198,7 +213,7 @@ Calling `session.execute(stmt)` will return the created entity.
 Values to create the entity with.
 
 ## ftrack_query.update
-Used to quickly update values.
+Used to batch update values on multiple entities.
 This is built off the `select` method so contains a lot of the same methods.
 
 ```python
@@ -228,15 +243,11 @@ stmt = delete(entity).where(...).options(remove_components=True)
 
 Calling `session.execute(stmt)` will return how many entities were deleted.
 
-A convenience method, `.options(remove_components=True)`, can be used when deleting a `Component`.
-
 ### where(_\*args, \*\*kwargs_)
 Filter what to update.
 
 ### options(_\*\*kwargs_)
-Additional flag added for `remove_components`.
-Enabling this will remove any `Component` entity from every `Location` containing it before it is deleted.
-Note that this prevents rollbacks so is not enabled by default.
+- `remove_components`: Remove any `Component` entity from every `Location` containing it before it is deleted. This is not enabled by default as it can't be rolled back.
 
 
 ## ftrack_query.attr
@@ -255,9 +266,6 @@ Any comparison can be reversed with the `~` prefix or the `not_` function.
 ### \_\_eq\_\_(_value_) | \_\_ne\_\_(_value_) | \_\_gt\_\_(_value_) | \_\_ge\_\_(_value_) | \_\_lt\_\_(_value_) | \_\_lt\_\_(_value_)
 Simple comparisons.
 
-### and\_(_\*args, \*\*kwargs_) | or\_(_\*args, \*\*kwargs_)
-Join multiple comparisons.
-`and_` is used by default if multiple arguments are given.
 
 ### in\_(_values_) | not\_in(_values_)
 Perform a check to check if an attribute matches any results.
