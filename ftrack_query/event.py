@@ -1,17 +1,17 @@
 """Simple wrapper over the FTrack event API.
 
 Example:
-    >>> from ftrack_query import event
+    >>> from ftrack_query.event import attr, and_, or_
     >>> session.event_hub.subscribe(str(
-    ...     event.and_(
-    ...         event.topic('ftrack.update'),
-    ...         event.data.user.name!=getuser(),
+    ...     and_(
+    ...         attr('topic') == 'ftrack.update',
+    ...         attr('data.user.name') != getuser(),
     ...     )
     ... ))
     >>> session.event_hub.wait()
 """
 
-__all__ = ['event', 'and_', 'or_', 'not_']
+__all__ = ['and_', 'or_', 'not_']
 
 from . import abstract
 from .utils import parse_operators

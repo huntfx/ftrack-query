@@ -3,18 +3,32 @@
 The classes in this file allow construction of a string to pass to the
 `ftrack_api.Session.query` method.
 
-Example:
-    >>> query = (
-    ...     session.Shot
+Examples:
+    >>> from ftrack_query import attr, create, select
+    >>> project = session.select('Project').where(name='Test Project').one()
+
+    >>> stmt = (
+    ...     select('Shot')
     ...     .where(
-    ...         ~entity.children.any(entity.name.like('%Animation%')),
+    ...         ~attr('children').any(attr('name').like('%Animation%')),
     ...         name='Shot 1',
     ...     )
-    ...     .order_by(entity.created_at.desc())
+    ...     .order_by(attr('created_at').desc())
     ...     .limit(5)
     ... )
-    >>> len(query.all())
-    5
+    >>> tasks = session.execute(query).all()
+
+    >>> rows_updated = session.execute(
+    ...     update('Task')
+    ...     .where(name='Old Task Name')
+    ...     .values(name='New Task Name')
+    ... )
+
+    >>> rows_deleted = session.execute(
+    ...     delete('Task').where(
+    ...         name='Old Task Name',
+    ...     )
+    ... )
 """
 
 __all__ = ['entity', 'and_', 'or_', 'not_']

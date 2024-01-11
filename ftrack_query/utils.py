@@ -1,7 +1,6 @@
 # pylint: disable=consider-using-f-string
 """General purpose functions."""
 
-import logging
 from functools import wraps
 
 import ftrack_api

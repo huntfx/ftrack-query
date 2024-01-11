@@ -39,7 +39,6 @@ with FTrackQuery() as session:
         .where(name='Old Task Name')
         .values(name='New Task Name')
     )
-    rows_updated = session.execute(stmt)
     session.commit()
 
     # Delete
@@ -48,7 +47,6 @@ with FTrackQuery() as session:
             name='Old Task Name',
         )
     )
-    rows_deleted = session.execute(stmt)
     session.commit()
 ```
 
