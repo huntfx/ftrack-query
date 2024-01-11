@@ -337,7 +337,7 @@ class Select(SessionInstance):
         # Allow empty string or None without breaking
         if not args or (len(args) == 1 and not args[0]):
             return self
-        self._populate += map(str, args)
+        self._populate.extend(map(str, args))
         return self
 
     @clone_instance
