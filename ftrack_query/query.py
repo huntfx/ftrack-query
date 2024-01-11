@@ -335,12 +335,8 @@ class Select(SessionInstance):
     def populate(self, *args):
         """Prefetch attributes as part of the query."""
         # Allow empty string or None without breaking
-        try:
-            if not args[0] and len(args) == 1:
-                return self
-        except IndexError:
+        if not args or (len(args) == 1 and not args[0]):
             return self
-
         self._populate += map(str, args)
         return self
 
