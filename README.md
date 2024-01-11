@@ -6,191 +6,274 @@ It is recommended to first read https://ftrack-python-api.readthedocs.io/en/stab
 ## Installation
     pip install ftrack_query
 
+## Information
+
+Instead of writing the whole query string at once, a "statement" is constructed (_eg. `stmt = select('Task')`_), and the query can be built up by calling methods such as `.where()` and `.populate()` on the statement.
+
+The [CRUD](https://en.wikipedia.org/wiki/CRUD) methods are all supported (`create`, `select`, `update`, `delete`), but the main functionality is designed for use with `select`. The statements are built with a similar syntax to the main API so it should be straightforward to transition between the two.
+
+
 ## Examples
 
-### Original Syntax
-This will build queries attached to the current session, which allows them to be executed directly.
+The below example is for very basic queries:
 
 ```python
-from ftrack_query import FTrackQuery, entity, or_
+from ftrack_query import FTrackQuery, attr, create, select, and_, or_
 
 with FTrackQuery() as session:
-    # Create
-    note = session.Note.create(
-        content='My new note',
-        author=session.User('peter'),
-        category=session.NoteLabel.where(entity.color!=None, name='Internal').one(),
-    )
-
-    # Query
-    task = session.Task.where(
-        entity.status.name.in_('Lighting', 'Rendering'),
-        or_(
-            entity.parent == session.Episode.first(),
-            entity.parent == None,
-        ),
-        name='My Task',
-    ).order(
-        entity.type.name.desc(),
-    ).select(
-        'name', 'type.name', 'status.name',
-    ).first()
-
-    task['notes'].append(note)
-    session.commit()
-```
-
-# Statement Syntax
-In version 1.7, new statement functions were added, to allow queries to be built without an associated `session` object.
-
-These require a `session.execute` call in order to work, but the underlying logic is the same as with the original syntax.
-
-```python
-from ftrack_query import FTrackQuery, select, create, update, delete
-
-with FTrackQuery() as session:
-    # Query
-    stmt = (
-        select('Task.name', 'Task.type.name', 'Task.status.name')
-        .where(entity.status.name.in_('Lighting', 'Rendering'))
-        .order_by(entity.name.desc())
-        .offset(5)
-        .limit(1)
-    )
-    task = session.execute(stmt).first()
-    print(f'Task found: {task})
+    # Select
+    project = session.select('Project').where(name='Test Project').one()
 
     # Create
-    stmt = (
-        create('Task')
-        .values(name='My Task', parent=task)
+    task = session.execute(
+        create('Task').values(
+            name='My Task',
+            project=project,
+        )
     )
-    task = session.execute(stmt)
     session.commit()
-    print(f'Task created: {task}')
 
     # Update
-    stmt = (
+    rows_updated = session.execute(
         update('Task')
         .where(name='Old Task Name')
         .values(name='New Task Name')
     )
-    rows = session.execute(stmt)
+    rows_updated = session.execute(stmt)
     session.commit()
-    print(f'Tasks updated: {rows}')
 
     # Delete
-    stmt = (
-        delete('Task')
-        .where(name='Old Task Name')
+    rows_deleted = session.execute(
+        delete('Task').where(
+            name='Old Task Name',
+        )
     )
-    rows = session.execute(stmt)
+    rows_deleted = session.execute(stmt)
     session.commit()
-    print(f'Tasks deleted: {rows}')
 ```
 
-### Event Syntax
-The event system uses a slightly different query language, this has been added for convenience but generally should not be needed.
+For a much more complex example:
+
+
+```python
+
+ATTR_TYPE = attr('type.name')
+
+TASK_STMT = (
+    select('Task')
+    # Filter the tasks
+    .where(
+        # Get any task without these statuses
+        ~attr('status.name').in_(['Lighting', 'Rendering']),
+        # Check for notes matching any of the following conditions:
+        attr('notes').any(
+            # Ensure note was posted by someone outside the company
+            ~attr('user.email').endswith('@company.com')
+            # Ensure note either not completable or not completed
+            or_(
+                and_(
+                    completed_by=None,
+                    is_todo=True,
+                ),
+                is_todo=False,
+            ),
+        ),
+        # Ensure it has an animation task
+        or_(
+            ATTR_TYPE.contains('Animation'),
+            ATTR_TYPE == 'Anim_Fixes',
+        ),
+    ),
+    # Order the results
+    .order_by(
+        ATTR_TYPE.desc(),  # Equivalent to "type.name desc"
+        'name',
+    )
+    # Use projections to populate attributes as part of the query
+    .populate(
+        'name',
+        'notes',
+        'status.name',
+        ATTR_TYPE,
+    )
+    .limit(5)
+)
+
+with FTrackQuery() as session:
+    # Filter the above query to the result of another query
+    task_stmt = TASK_STMT.where(
+        project_id=session.select('Project').where(name='Test Project').one()['id']
+    )
+
+    # Use the current session to execute the statement
+    tasks = session.execute(task_stmt).all()
+```
+
+
+### Events
+The event system uses a slightly different query language.
 
 ```python
 from ftrack_query import FTrackQuery, event
+from ftrack_query.event import attr, and_, or_
 
 with FTrackQuery() as session:
     session.event_hub.subscribe(str(
-        event.and_(
-            event.topic('ftrack.update'),
-            event.data.user.name != getuser(),
+        and_(
+            attr('topic') == 'ftrack.update',
+            attr('data.user.name') != getuser(),
         )
     ))
     session.event_hub.wait()
 ```
 
-# Reference
+Note that `attr()`, `and_()`, and `or_()` are present in both `ftrack_query` and `ftrack_query.event`. These are **not** interchangable, so if both are needed, then import `event` and use that as the namespace.
 
-## FTrackQuery
+# API Reference
+
+## ftrack_query.FTrackQuery
 Main class inherited from `ftrack_api.Session`.
 
-## Query
-Every available entity type is an attribute of a session. What was originally `session.query('Note')` is now `session.Note`. This results in the `Query` object, which is used for constructing and executing queries.
+## ftrack_query.select
+Used for building the query string.
 
-### .where(_\*args, \*\*kwargs_)
+```python
+from ftrack_query import select
+
+stmt = select(entity).where(...).populate(...)
+```
+
+Calling `session.execute(stmt)` will execute the query and return FTrack's own `QueryResult` object, from which `.one()`, `.first()` or `.all()` may be called. Alternatively, by using the shortcut `session.select(entity)`, then this may be skipped.
+
+### where(_\*args, \*\*kwargs_)
 Filter the result.
 
-Using kwargs is the recommended way, with a syntax like `.where(first_name='Peter', last_name='Hunt')`.
+Using keywords is the fastest way, such as `.where(first_name='Peter', last_name='Hunt')`.
+However `attr()` is required for relationship queries, or anything other than eqality checks, such as `.where(attr('project.metadata').any(attr('key') != 'disabled'))`.
 
-Using args is required for complex queries. This uses the `Comparison` object, which is automatically created when comparing multiple `Query` objects. An example would be `.where(entity.project.metadata.any(entity.key!='disabled'))`.
-
-### .populate(_\*args_) | .select(_\*args_)
+### populate(_\*attrs_)
 Pre-fetch entity attributes.
 
-An an example, in order to iterate through the name of every user, it would be a good idea to prefetch `first_name` and `last_name`, as otherwise two queries will be performed for each individual user.
+An an example, in order to iterate through the name of every user, it would be a good idea to load `first_name` and `last_name` as part of the query. Without that, it would take 2 separate queries _per user_, which is known as the [N+1 query problem](https://stackoverflow.com/questions/97197/what-is-the-n1-selects-problem-in-orm-object-relational-mapping).
 
-### .order_by(_attribute_)
+### order_by(_\*attrs_) | order(_\*attrs_) | order(_\*attrs_)
 Sort the results by an attribute.
 
-The attribute and order can be given in the format `entity.name.desc()`, or as a raw string such as `name descending`.
+The attribute and order can be given in the format `attr('name').desc()`, or as a raw string such as `name descending`.
 
-### .reverse()
+### reverse()
 Reverse the sorting direction.
 
-### .limit(_value_)
+### limit(_value_)
 Limit the amount of results to a certain value.
 
-### .offset(_value_)
-In the case of using a limit, this applies an offset to the result that is returned.
+Note: This is not compatible with calling `.first()` or `.one()`, as FTrack applies their own limit automatically.
 
-### .in_(_subquery_) | .not_in(_subquery_)
-Perform a check to check if an attribute matches any results.
+### offset(_value_)
+In the case of using a limit, apply an offset to the result that is returned.
 
-This can accept a subquery such `.in_('select id from table where x is y')`, or a list of items like `.in_('x', 'y')`.
+### options(_\*\*kwargs_)
+For advanced users only.
+`page_size`: Set the number of results to be fetched at once from FTrack.
+`session`: Attach a session object to the query.
 
-### .\_\_call\_\_(_value_)
-If an entity has a primary key, by calling the value of that primary key, the entity or `None` will be returned.
-Currently only `User` supports this.
+### subquery(_attribute='id'_)
+Make the statement a subquery for use within `.in_()`.
+This ensures there's always a "select from" as part of the statement.
+Manually setting the attribute parameter will override any existing projections.
 
-## Comparison
-The `Comparison` object is designed to convert data to a string. It contains a wide array of operators that can be used against any data type, including other `Comparison` objects.
 
-Any comparison can be reversed with the `~` prefix or the `not_` function.
+## ftrack_query.create
+Used for creating new entities.
 
-- String Comparison: `entity.attr=='value'`
-- Number comparison: `entity.attr>5`
-- Pattern Comparison: `entity.attr.like('value%')`
-- Time Comparison: `entity.attr.after(arrow.now().floor('day'))`
-- Scalar Relationship: `entity.attr.has(subattr='value')`
-- Collection Relationship: `entity.attr.any(subattr='value')`
-- Subquery Relationship: `entity.attr.in_(subquery)`
+```python
+from ftrack_query import create
 
-## and\_(_\*args, \*\*kwargs_) | or\_(_\*args, \*\*kwargs_)
-Join multiple comparisons. `and_` is used by default if nothing is provided.
-
-## Statements
-The statement functions build upon the `Query` object, but are not attached to any session. Instead of `session.Note`, it becomes `select('Note')`.
-
-### select(_\*_entity_type_)
-A select statement has access to the `Query` methods such as `.where()`.
-
-If multiple arguments are given, it will use these in place of `.populate()` (eg. `select('Task.name', Task.parent')` is the same as `select('Task').populate('name', 'parent')`).
-
-Calling `session.execute(stmt)` will execute the query and return FTrack's own `QueryResult` object, from which `.one()`, `.first()` or `.all()` may be called.
-
-### create(_entity_type_)
-A create statement has a `.values()` method used to input the data.
+stmt = create(entity).values(...)
+```
 
 Calling `session.execute(stmt)` will return the created entity.
 
-### update(_entity_type_)
-An update statement has access to all of the `Query` methods, but also has a `.values()` method used to input the new data.
+### values(_\*\*kwargs_)
+Values to create the entity with.
+
+## ftrack_query.update
+Used to quickly update values.
+This is built off the `select` method so contains a lot of the same methods.
+
+```python
+from ftrack_query import update
+
+stmt = update(entity).where(...).values(...)
+```
 
 Calling `session.execute(stmt)` will return how many entities were found and updated.
 
-### delete(_entity_type_)
-A delete statement has access to most of the `Query` methods.
+### where(_\*args, \*\*kwargs_)
+Filter what to update.
+
+### values(_\*\*kwargs_)
+Values to update on the entity.
+
+
+## ftrack_query.delete
+Used to delete entities.
+This is built off the `select` method so contains a lot of the same methods.
+
+```python
+from ftrack_query import delete
+
+stmt = delete(entity).where(...).options(remove_components=True)
+```
 
 Calling `session.execute(stmt)` will return how many entities were deleted.
 
-A convenience method, `.options(remove_components=True)`, can be used when deleting a `Component`. Enabling this will remove the component from every location before it is deleted.
+A convenience method, `.options(remove_components=True)`, can be used when deleting a `Component`.
 
+### where(_\*args, \*\*kwargs_)
+Filter what to update.
+
+### options(_\*\*kwargs_)
+Additional flag added for `remove_components`.
+Enabling this will remove any `Component` entity from every `Location` containing it before it is deleted.
+Note that this prevents rollbacks so is not enabled by default.
+
+
+## ftrack_query.attr
+The `Comparison` object is designed to convert data to a string. It contains a wide array of operators that can be used against any data type, including other `Comparison` objects. The function `attr` is a shortcut to this.
+
+Any comparison can be reversed with the `~` prefix or the `not_` function.
+
+- String Comparison: `attr(key) == 'value'`
+- Number comparison: `attr(key) > 5`
+- Pattern Comparison: `attr(key).like('value%')`
+- Time Comparison: `attr(key).after(arrow.now().floor('day'))`
+- Scalar Relationship: `attr(key).has(subkey='value')`
+- Collection Relationship: `attr(key).any(subkey='value')`
+- Subquery Relationship: `attr(key).in_(subquery)`
+
+### \_\_eq\_\_(_value_) | \_\_ne\_\_(_value_) | \_\_gt\_\_(_value_) | \_\_ge\_\_(_value_) | \_\_lt\_\_(_value_) | \_\_lt\_\_(_value_)
+Simple comparisons.
+
+### and\_(_\*args, \*\*kwargs_) | or\_(_\*args, \*\*kwargs_)
+Join multiple comparisons.
+`and_` is used by default if multiple arguments are given.
+
+### in\_(_values_) | not\_in(_values_)
+Perform a check to check if an attribute matches any results.
+
+This can accept a subquery such `.in_('select id from table where x is y')`, or a list of items like `.in_(['x', 'y'])`.
+
+### like(_value_) | not\_like(_value_) | startswith(_value_) | endwith(_value_) | contains(_value_)
+Check if a string is contained within the query.
+Use a percent sign as the wildcard if using `like` or `not_like`; the rest are shortcuts and do this automatically.
+
+### has\_(_\*args, \*\*kwargs_) | any\_(_\*args, \*\*kwargs_)
+Test against scalar and collection relationships.
+
+### before(_values_) | after(_values_)
+Test against dates.
+Using `arrow` objects is recommended.
 
 
 ## Equivalent examples from the [API reference](http://ftrack-python-api.rtd.ftrack.com/en/0.9.0/querying.html):
@@ -203,45 +286,32 @@ select('Project')
 select('Project').where(status='active')
 
 # Project where status is active and name like "%thrones"
-select('Project').where(entity.name.like('%thrones'), status='active')
+select('Project').where(attr('name').like('%thrones'), status='active')
 
 # session.query('Project where status is active and (name like "%thrones" or full_name like "%thrones")')
-select('Project').where(or_(entity.name.like('%thrones'), entity.full_name.like('%thrones')), status='active')
+select('Project').where(or_(attr('name').like('%thrones'), attr('full_name').like('%thrones')), status='active')
 
 # session.query('Task where project.id is "{0}"'.format(project['id']))
 select('Task').where(project=project)
 
 # session.query('Task where project.id is "{0}" and status.type.name is "Done"'.format(project['id']))
-select('Task').where(entity.status.type.name == 'Done', project=project)
+select('Task').where(attr('status.type.name') == 'Done', project=project)
 
 # session.query('Task where timelogs.start >= "{0}"'.format(arrow.now().floor('day')))
-select('Task').where(entity.timelogs.start >= arrow.now().floor('day'))
+select('Task').where(attr('timelogs.start') >= arrow.now().floor('day'))
 
 # session.query('Note where author has (first_name is "Jane" and last_name is "Doe")')
-select('Note').where(entity.author.has(first_name='Jane', last_name='Doe'))
+select('Note').where(attr('author').has(first_name='Jane', last_name='Doe'))
 
 # session.query('User where not timelogs any ()')
-select('User').where(~entity.timelogs.any())
+select('User').where(~attr('timelogs').any())
 
 # projects = session.query('select full_name, status.name from Project')
-select('Project.full_name', 'Project.status.name')
-# or
 select('Project').populate('full_name', 'status.name')
 
 # select name from Project where allocations.resource[Group].memberships any (user.username is "john_doe")
-select('Project').select('name').where(entity.allocations.resource['Group'].memberships.any(entity.user.username == 'john_doe'))
+select('Project').select('name').where(attr('allocations.resource[Group].memberships').any(attr('user.username') == 'john_doe'))
 
 # Note where parent_id is "{version_id}" or parent_id in (select id from ReviewSessionObject where version_id is "{version_id}")
-select('Note').where(or_(entity.parent_id.in_(select('ReviewSessionObject.id').where(version_id=version_id)), parent_id=version_id))
+select('Note').where(or_(attr('parent_id').in_(select('ReviewSessionObject').where(version_id=version_id).subquery()), parent_id=version_id))
 ```
-
-
-## Planned Changes for 2.0
-
-Since a lot of functionality has been added from the initial version, and old features are no longer needed, v2 is going to have a major overhaul.
-
-- Replace `session.<Entity>` with `session.select(<Entity>)` - this will also remove the `session.<Entity>.get()` shortcut
-- Replace `entity.x.y == z` with `attr('x.y') == z`
-- Add `session.select`, `session.update`, `session.insert` and `session.delete`. This will allow the same queries to run with or without an attached session.
-- All statements will have a `.execute()` method.
-- `session.execute(stmt)` will call `stmt.options(session=self).execute()`
