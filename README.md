@@ -12,6 +12,8 @@ Instead of writing the whole query string at once, a "statement" is constructed 
 
 The [CRUD](https://en.wikipedia.org/wiki/CRUD) methods are all supported (`create`, `select`, `update`, `delete`), but the main functionality is designed for use with `select`. The statements are built with a similar syntax to the main API so it should be straightforward to transition between the two.
 
+Note that this is fully backwards compatible, so existing queries do not need to be rewritten.
+
 
 ## Examples
 
@@ -136,13 +138,13 @@ Main session inherited from `ftrack_api.Session`.
 ## ftrack_query.and\_(_\*args, \*\*kwargs_) | ftrack_query.or\_(_\*args, \*\*kwargs_)
 Join multiple comparisons.
 
-Shortcuts are provided with `&` and `|` (_eg. `(attr(a) == b) & attr(x) == y`_).
+Shortcuts are provided with `&` and `|` (_eg. `attr(a).contains(b) & attr(x).contains(y)`_).
 
 
 ## ftrack_query.not\_(_\*args, \*\*kwargs_)
 Reverse the input comparisons.
 
-A shortcut is provided with `~` (_eg. `~attr(x) == y`_).
+A shortcut is provided with `~` (_eg. `~attr(x).contains(y)`_).
 
 
 ## ftrack_query.select
