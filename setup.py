@@ -32,14 +32,14 @@ setup(
     url='https://github.com/huntfx/ftrack-query',
     download_url='https://github.com/huntfx/ftrack-query/archive/{}.tar.gz'.format(version),
     project_urls={
-        'Documentation': 'https://github.com/huntfx/ftrack-query/wiki',
+        'Documentation': 'https://github.com/huntfx/ftrack-query',
         'Source': 'https://github.com/huntfx/ftrack-query',
         'Issues': 'https://github.com/huntfx/ftrack-query/issues',
     },
-    keywords=['ftrack', 'api', 'query', 'event'],
+    keywords=['ftrack', 'api', 'query', 'vfx'],
     install_requires=requirements,
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Operating System :: Microsoft :: Windows',
@@ -53,6 +53,9 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
     ],
-    python_requires=('>=2.7.9, <4.0')
+    python_requires=('>=2.7')
 )
