@@ -243,6 +243,7 @@ class Select(SessionInstance):
         self._limit = None
         self._page_size = None
         self._where = []
+        self._group_by = []
 
     def __len__(self):
         """Get the number of results.
@@ -265,6 +266,8 @@ class Select(SessionInstance):
         query.append(str(and_(*self._where)))
         if query[-1]:
             query.insert(-1, 'where')
+        if self._group_by:
+            query += ['group by', ', '.join(self._group_by)]
         if self._sort:
             query.append('order by')
             sort = ('{}{}'.format(value, ('', ' descending')[descending])
@@ -287,6 +290,7 @@ class Select(SessionInstance):
         new._entity = self._entity
         new._where = list(self._where)
         new._populate = list(self._populate)
+        new._group_by = list(self._group_by)
         new._sort = list(self._sort)
         new._offset = self._offset
         new._limit = self._limit
@@ -300,6 +304,12 @@ class Select(SessionInstance):
             UnboundSessionError: If the session hasn't been set.
         """
         session = self._get_session(session)
+
+        # Special case for aggregated results
+        if self._group_by:
+            res = session.call([dict(action='query', expression=str(self))])
+            return res[0]['data']
+
         return session.query(str(self), page_size=self._page_size)
 
     def one(self):
@@ -361,6 +371,19 @@ class Select(SessionInstance):
             self._sort.append((attr, desc))
         return self
     order = order_by = sort
+
+    @clone_instance
+    def group_by(self, *args):
+        """Group the results when aggregating data.
+        The following functions are supported: `sum`, `avg`, `min`,
+        `max`, `count`.
+
+        The `strict_api` parameter must be enabled on the session or
+        the query will fail.
+        https://ftrack-python-api.readthedocs.io/en/stable/example/group_by.html
+        """
+        self._group_by.extend(args)
+        return self
 
     @clone_instance
     def offset(self, value=None):
@@ -478,6 +501,10 @@ class Update(Select):
         """Disable projections."""
         raise AttributeError('projections not supported')
 
+    def group_by(self, *args):
+        """Disable group by."""
+        raise AttributeError('group_by not supported')
+
     def __str__(self):
         """Show a preview of what the statement is."""
         return 'update {} set ({})'.format(
@@ -531,6 +558,10 @@ class Delete(Select):
     def populate(self, *args):
         """Disable projections."""
         raise AttributeError('projections not supported')
+
+    def group_by(self, *args):
+        """Disable group by."""
+        raise AttributeError('group_by not supported')
 
     @clone_instance
     def clean_components(self, remove=True):

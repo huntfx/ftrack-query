@@ -195,6 +195,17 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(str(query.limit(10)), str(query2))
         self.assertNotEqual(str(query.limit(11)), str(query2))
 
+    def test_group_by(self):
+        query = (
+            select('Task')
+            .group_by('status_id')
+            .limit(10)
+            .offset(5)
+            .order_by('name')
+            .populate('name, count(id)')
+        )
+        self.assertEqual(str(query), 'select name, count(id) from Task group by status_id order by name offset 5 limit 10')
+
 
 class TestCreate(unittest.TestCase):
 
@@ -205,6 +216,10 @@ class TestCreate(unittest.TestCase):
         stmt = create('Task')
         stmt.values(name='new')
         self.assertEqual(str(stmt), str(create('Task')))
+
+    def test_group_by(self):
+        with self.assertRaises(AttributeError):
+            create('Task').group_by('name')
 
 
 class TestUpdate(unittest.TestCase):
@@ -227,6 +242,10 @@ class TestUpdate(unittest.TestCase):
     def test_populate(self):
         with self.assertRaises(AttributeError):
             update('Task').populate('name')
+
+    def test_group_by(self):
+        with self.assertRaises(AttributeError):
+            update('Task').group_by('name')
 
 
 class TestDelete(unittest.TestCase):
@@ -268,6 +287,10 @@ class TestDelete(unittest.TestCase):
         self.assertTrue(delete_option._remove_components)
         self.assertFalse(delete_method2._remove_components)
         self.assertFalse(delete_option2._remove_components)
+
+    def test_group_by(self):
+        with self.assertRaises(AttributeError):
+            delete('Task').group_by('name')
 
 
 if __name__ == '__main__':
