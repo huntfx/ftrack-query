@@ -1,24 +1,37 @@
+# pylint: disable=consider-using-f-string, useless-object-inheritance
+"""Base classes for both the query and event syntax."""
+
 from collections import defaultdict
 from types import GeneratorType
 
-import ftrack_api
+import ftrack_api  # type: ignore
+
+from .type_hints import TYPE_CHECKING
+from .utils import convert_output_value
+
+if TYPE_CHECKING:
+    from typing import Any, Callable, Dict, Iterator, Tuple, Union
 
 
 class Comparison(object):
     """Abstract class for attribute comparisons."""
 
-    Operators = defaultdict(dict)
+    Operators = defaultdict(dict)  # type: Dict[type, Dict[str, Callable]]
 
     def __init__(self, value):
+        # type: (str) -> None
         self.value = value
 
     def __repr__(self):
-        return '{}({!r})>'.format(self.__class__.__name__, self.value)
+        # type: () -> str
+        return '{}({!r})>'.format(type(self).__name__, self.value)
 
     def __str__(self):
+        # type: () -> str
         return self.value
 
     def __invert__(self):
+        # type: () -> Comparison
         """Reverse the current query.
 
         Ideally the minimum amount of brackets should be used, but this
@@ -26,13 +39,15 @@ class Comparison(object):
         converted to strings. Under no circumstances should the meaning
         of the query change, so if in doubt, add the brackets.
         """
+        cls = type(self)
+
         if self.value[:4] == 'not ':
-            return self.__class__(self.value[4:])
+            return cls(self.value[4:])
 
         # Figure out if brackets need to be added
         # If there are no connectors, then it's likely to be fine
         if ' and ' not in self.value and ' or ' not in self.value:
-            return self.__class__('not '+self.value)
+            return cls('not '+self.value)
 
         # If there are brackets, then check the depth remains above 0,
         # otherwise ~and(or(), or()) will be wrong
@@ -40,79 +55,91 @@ class Comparison(object):
         if self.value[0] == '(' and self.value[-1] == ')':
             depth = 0
             pause = False
-            for c in self.value[1:-1]:
-                if c == '(':
+            for char in self.value[1:-1]:
+                if char == '(':
                     if not pause:
                         depth += 1
-                elif c == ')':
+                elif char == ')':
                     if not pause:
                         depth -= 1
-                elif c == '"':
+                elif char == '"':
                     pause = not pause
                 if depth < 0:
-                    return self.__class__('not ({})'.format(self.value))
-            return self.__class__('not '+self.value)
+                    return cls('not ({})'.format(self.value))
+            return cls('not '+self.value)
 
-        return self.__class__('not ({})'.format(self.value))
+        return cls('not ({})'.format(self.value))
 
     def __contains__(self, value):
         """Disable the use of `x in obj`, since it can only return a boolean."""
         raise TypeError("'in' cannot be overloaded")
 
-    def is_(self, *args, **kwargs):
+    def is_(self, value):
+        # type: (Any) -> Comparison
         """Setup .is() as an alias to equals."""
-        return self.__eq__(*args, **kwargs)
+        return self == value
 
-    def is_not(self, *args, **kwargs):
+    def is_not(self, value):
+        # type: (Any) -> Comparison
         """Setup .is_not() as an alias to not equals."""
-        return self.__ne__(*args, **kwargs)
+        return self != value
 
     @classmethod
-    def register_operator(cls, operator, brackets):
+    def register_operator(cls, name, brackets):
+        # type: (str, bool) -> Callable
         """Create a new operator such as "and"/"or".
+        This is specific to the calling class, so that an inherited
+        class gets its own operators.
 
         Parameters:
-            operator (str): What to use as the joining string.
+            name: What to use as the joining string.
                 "and" and "or" are examples.
-            brackets (bool): If multiple values need to be parenthesized.
-            parse (function): Parse *args and **kwargs to return a list.
+            brackets: If multiple values need to be parenthesized.
         """
-        def fn(*args, **kwargs):
+        def operator(*args, **kwargs):
+            # type: (*Any, **Any) -> Comparison
             """Create a comparison object containing all the inputs."""
-            args = (arg for arg in args if arg is not None)
-            query_parts = list(cls.parser(*args, **kwargs))
-            query = ' {} '.format(operator).join(map(str, query_parts))
+            query_parts = list(cls.parser(*(arg for arg in args if arg is not None), **kwargs))
+            query = ' {} '.format(name).join(map(str, query_parts))
             if brackets and len(query_parts) > 1:
                 return cls('({})'.format(query))
             return cls(query)
-        cls.Operators[cls][operator] = fn
-        return fn
+
+        cls.Operators[cls][name] = operator
+        return operator
 
     @classmethod
     def operator(cls, operator):
+        # type: (str) -> Callable
+        """Get an existing operator."""
         try:
             return cls.Operators[cls][operator]
         except KeyError:
-            raise AttributeError('no operator named "{}"'.format(operator))
+            raise AttributeError('no operator named "{}"'.format(operator))  # pylint: disable=raise-missing-from
 
     def __and__(self, other):
+        # type: (Any) -> Comparison
         """Join two comparisons."""
         return self.operator('and')(self, other)
 
     def __rand__(self, other):
+        # type: (Any) -> Comparison
         """Join two comparisons."""
         return self.operator('and')(other, self)
 
     def __or__(self, other):
+        # type: (Any) -> Comparison
         """Join two comparisons."""
         return self.operator('or')(self, other)
 
     def __ror__(self, other):
+        # type: (Any) -> Comparison
         """Join two comparisons."""
         return self.operator('or')(other, self)
 
     @classmethod
     def parser(cls, *args, **kwargs):
+        # type: (*Any, **Any) -> Iterator[Union[Comparison, str]]
         """Convert multiple inputs into `Comparison` objects.
         Different types of arguments are allowed.
 
@@ -160,3 +187,16 @@ class Comparison(object):
 
         for key, value in kwargs.items():
             yield cls(key) == value
+
+    def _get_value_base(self, value):
+        # type: (Any) -> Tuple[str, str]
+        """Use the input value to get the base and actual value required.
+
+        For example with "a=b", then the base is "a" and value is "b".
+        However if "project=<ProjectEntity>", then the base should be
+        "project.id", and the value "<ProjectEntity>['id']".
+        """
+        base = self.value
+        if isinstance(value, ftrack_api.entity.base.Entity):
+            base += '.id'
+        return base, convert_output_value(value)

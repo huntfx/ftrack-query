@@ -1,3 +1,4 @@
+# pylint: disable=consider-using-f-string
 """Simple wrapper over the FTrack event API.
 
 Example:
@@ -14,45 +15,54 @@ Example:
 __all__ = ['and_', 'or_', 'not_']
 
 from . import abstract
-from .utils import parse_operators
+from .type_hints import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
 
 
 class Comparison(abstract.Comparison):
-    # pylint: disable=unexpected-special-method-signature
     """Comparisons for the event syntax."""
 
-    @parse_operators
-    def __eq__(self, value, base):
+    def __eq__(self, value):  # type: ignore
+        # type: (Any) -> Comparison
         """If a value is exactly equal."""
-        return self.__class__('{}={}'.format(base, value))
+        return type(self)('{}={}'.format(*self._get_value_base(value)))
 
-    @parse_operators
-    def __ne__(self, value, base):
+    def __ne__(self, value):  # type: ignore
+        # type: (Any) -> Comparison
         """If a value is not exactly equal."""
-        return self.__class__('{}!={}'.format(base, value))
+        return type(self)('{}!={}'.format(*self._get_value_base(value)))
 
-    @parse_operators
-    def __gt__(self, value, base):
+    def __gt__(self, value):
+        # type: (Any) -> Comparison
         """If a value is greater than."""
-        return self.__class__('{}>{}'.format(base, value))
+        return type(self)('{}>{}'.format(*self._get_value_base(value)))
 
-    @parse_operators
-    def __ge__(self, value, base):
+    def __ge__(self, value):
+        # type: (Any) -> Comparison
         """If a value is greater than or equal."""
-        return self.__class__('{}>={}'.format(base, value))
+        return type(self)('{}>={}'.format(*self._get_value_base(value)))
 
-    @parse_operators
-    def __lt__(self, value, base):
+    def __lt__(self, value):
+        # type: (Any) -> Comparison
         """If a value is less than."""
-        return self.__class__('{}<{}'.format(base, value))
+        return type(self)('{}<{}'.format(*self._get_value_base(value)))
 
-    @parse_operators
-    def __le__(self, value, base):
+    def __le__(self, value):
+        # type: (Any) -> Comparison
         """If a value is less than or equal."""
-        return self.__class__('{}<={}'.format(base, value))
+        return type(self)('{}<={}'.format(*self._get_value_base(value)))
+
+
+def attr(value):
+    # type (str) -> Comparison
+    """Shortcut to create a Comparison object."""
+    return Comparison(value)
 
 
 def not_(*args, **kwargs):
+    # type: (*Any, **Any) -> Comparison
     """Reverse a comparison object."""
     return ~or_(*args, **kwargs)
 
@@ -60,5 +70,3 @@ def not_(*args, **kwargs):
 and_ = Comparison.register_operator('and', brackets=False)
 
 or_ = Comparison.register_operator('or', brackets=True)
-
-attr = Comparison

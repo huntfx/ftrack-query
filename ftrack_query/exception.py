@@ -1,6 +1,7 @@
+# pylint: disable=super-with-arguments
 """Custom exceptions."""
 
-import ftrack_api
+import ftrack_api  # type: ignore
 
 
 class Error(ftrack_api.exception.Error):
@@ -13,5 +14,5 @@ class UnboundSessionError(Error):
     """Raise an error if attempting to execute a statement with no session."""
 
     def __init__(self):
-        msg = 'statement has no session bound to it'
-        super(UnboundSessionError, self).__init__(msg)
+        # type: () -> None
+        super(UnboundSessionError, self).__init__('statement has no session bound to it')
