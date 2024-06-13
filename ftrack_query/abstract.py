@@ -7,7 +7,7 @@ from types import GeneratorType
 import ftrack_api  # type: ignore
 
 from .type_hints import TYPE_CHECKING
-from .utils import convert_output_value
+from .utils import convert_output_value, reverse_value
 
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, Iterator, Tuple, Union
@@ -32,43 +32,8 @@ class Comparison(object):
 
     def __invert__(self):
         # type: () -> Comparison
-        """Reverse the current query.
-
-        Ideally the minimum amount of brackets should be used, but this
-        is fairly complex to calculate as child items are automatically
-        converted to strings. Under no circumstances should the meaning
-        of the query change, so if in doubt, add the brackets.
-        """
-        cls = type(self)
-
-        if self.value[:4] == 'not ':
-            return cls(self.value[4:])
-
-        # Figure out if brackets need to be added
-        # If there are no connectors, then it's likely to be fine
-        if ' and ' not in self.value and ' or ' not in self.value:
-            return cls('not '+self.value)
-
-        # If there are brackets, then check the depth remains above 0,
-        # otherwise ~and(or(), or()) will be wrong
-        # TODO: Optimise with regex or something
-        if self.value[0] == '(' and self.value[-1] == ')':
-            depth = 0
-            pause = False
-            for char in self.value[1:-1]:
-                if char == '(':
-                    if not pause:
-                        depth += 1
-                elif char == ')':
-                    if not pause:
-                        depth -= 1
-                elif char == '"':
-                    pause = not pause
-                if depth < 0:
-                    return cls('not ({})'.format(self.value))
-            return cls('not '+self.value)
-
-        return cls('not ({})'.format(self.value))
+        """Reverse the current query."""
+        return type(self)(reverse_value(self.value))
 
     def __contains__(self, value):
         """Disable the use of `x in obj`, since it can only return a boolean."""
